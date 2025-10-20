@@ -7,6 +7,8 @@
     <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <title>Dynamic Fretboard Diagram</title>
+    <!-- 1. Include the GSAP library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <style>
         body {
             background-color: #fff;
@@ -132,6 +134,9 @@
     <!-- SVG container for strings. It will be populated by main.js -->
     <svg id="string-svg-container"></svg>
 </div>
+<br>
+<!-- 2. Add a button to trigger the animation -->
+<button id="bend-note-button" style="margin-top: 20px; padding: 10px 15px; font-family: 'Roboto', sans-serif;">Bend Note</button>
 
 <script src="main.js" type="module"></script>
 

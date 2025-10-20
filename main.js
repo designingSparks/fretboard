@@ -19,6 +19,10 @@ const STRING_CONFIG = [
     { width: 3.6, color: '#a9a9a9' }  // Low E
 ];
 
+// A virtual distance in pixels from the nut to the saddle.
+// This is used to calculate the shape of the bent string. A larger number creates a more subtle angle.
+const VIRTUAL_SCALE_LENGTH_PX = 5000;
+
 // --- New Data Structure for Positions ---
 const pentatonicPositions = [
     { position: 1, frets: { min: 2, max: 5 } },
@@ -337,23 +341,96 @@ function drawStringsAsSVG() {
     const x1 = firstFretCell.getBoundingClientRect().left - diagramRect.left;
     const x2 = lastFretCell.getBoundingClientRect().right - diagramRect.left;
 
+    // The saddle is far to the right. We'll use our virtual scale length for this.
+    const saddleX = x1 + VIRTUAL_SCALE_LENGTH_PX;
+
     GUITAR_TUNING.forEach((stringInfo, index) => {
         const stringRow = document.querySelector(`td.string-label[data-string="${index}"]`).parentElement;
         const rowRect = stringRow.getBoundingClientRect();
 
         // Calculate the vertical center of the row relative to the diagram container
-        const y = rowRect.top - diagramRect.top + (rowRect.height / 2);
+        const y = Math.round(rowRect.top - diagramRect.top + (rowRect.height / 2));
 
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', x1);
-        line.setAttribute('y1', y);
-        line.setAttribute('x2', x2);
-        line.setAttribute('y2', y);
-        line.setAttribute('stroke', STRING_CONFIG[index].color);
-        line.setAttribute('stroke-width', STRING_CONFIG[index].width);
-        line.id = `string-${index}`; // Add an ID for easy selection with GSAP
-        svgContainer.appendChild(line);
+        // Use a <path> instead of a <line> to allow for bending
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        // The path starts at the nut (M x1 y), goes to the saddle (L saddleX y)
+        path.setAttribute('d', `M ${x1} ${y} L ${saddleX} ${y}`);
+        path.setAttribute('stroke', STRING_CONFIG[index].color);
+        path.setAttribute('stroke-width', STRING_CONFIG[index].width);
+        path.setAttribute('fill', 'none'); // Paths can be filled, we don't want that
+        path.id = `string-${index}`; // Add an ID for easy selection
+
+        svgContainer.appendChild(path);
     });
+}
+
+// --- 5. Animation ---
+
+/**
+ * Performs a string bend animation on a specific note using GSAP.
+ * The note moves down by one string spacing, holds, and returns.
+ * @param {number} stringIndex - The index of the string (0-5).
+ * @param {number} fret - The fret number of the note to bend.
+ */
+function animateNoteBend(stringIndex, fret) {
+    // 1. Find the target note element
+    const fretCellSelector = `td.fret[data-string="${stringIndex}"][data-fret="${fret}"]`;
+    const fretCell = document.querySelector(fretCellSelector);
+    if (!fretCell) {
+        console.error(`Fret cell not found at string ${stringIndex}, fret ${fret}.`);
+        return;
+    }
+    const noteToBend = fretCell.querySelector('.note');
+
+    if (!noteToBend) {
+        console.error(`Note not found at string ${stringIndex}, fret ${fret} to animate.`);
+        return;
+    }
+
+    // 2. Find the string path to animate
+    const stringPath = document.getElementById(`string-${stringIndex}`);
+    if (!stringPath) {
+        console.error(`String path not found for string index ${stringIndex}.`);
+        return;
+    }
+
+    // 3. Calculate animation parameters
+    const stringRow = document.querySelector('#fretboard-body tr');
+    if (!stringRow) return;
+    const bendDistance = stringRow.offsetHeight;
+
+    const diagramRect = document.querySelector('.fretboard-diagram').getBoundingClientRect();
+    const fretRect = fretCell.getBoundingClientRect();
+    const stringRect = stringRow.getBoundingClientRect();
+
+    // Get the initial path data to find the start and end points
+    const pathData = stringPath.getAttribute('d').split(' ');
+    const nutX = parseFloat(pathData[1]);
+    const nutY = parseFloat(pathData[2]);
+    const saddleX = parseFloat(pathData[4]);
+
+    // The point on the string we are "pushing"
+    const bendPointX = fretRect.left - diagramRect.left + (fretRect.width / 2);
+
+    // 4. Create a proxy object to animate. GSAP will tween the 'y' value of this object.
+    let bendProxy = { y: nutY };
+
+    // 5. Create the GSAP timeline
+    const tl = gsap.timeline({
+        onUpdate: () => {
+            // On every frame of the animation, update the SVG path's 'd' attribute
+            const newPath = `M ${nutX} ${nutY} L ${bendPointX} ${bendProxy.y} L ${saddleX} ${nutY}`;
+            gsap.set(stringPath, { attr: { d: newPath } });
+        }
+    });
+
+    // Animate the note and the proxy object separately on the same timeline.
+    // The "<" at the start of the second .to() call makes it start at the same time as the previous one.
+    tl.to(noteToBend, { y: bendDistance, duration: 0.25, ease: "power1.out" }) // Bend note
+      .to(bendProxy, { y: `+=${bendDistance}`, duration: 0.25, ease: "power1.out" }, "<") // Bend string path
+      .to({}, { duration: 0.5 }) // Hold (empty tween for a delay)
+      .to(noteToBend, { y: 0, duration: 0.25, ease: "power1.in" }) // Release note
+      .to(bendProxy, { y: nutY, duration: 0.25, ease: "power1.in" }, "<"); // Release string path
 }
 
 // --- 4. Initial Drawing ---
@@ -362,11 +439,17 @@ const scaleToDraw = cMajorPentatonic;
 
 
 // --- Execution ---
-drawFretboard();    // 1. Draw the board structure first
+drawFretboard(); // 1. Draw the board structure first
 if (SHOW_DOTS) {
-    drawFretMarkers();  // 2. Add the fret marker dots
+    drawFretMarkers(); // 2. Add the fret marker dots
 }
 drawScale(scaleToDraw); // Then draw the notes on top
 drawStringsAsSVG();
 // To highlight multiple positions, pass an array to the new function.
 highlightPositions(scaleToDraw, ['p5a', 'p1a']);
+
+// --- Animation Trigger ---
+document.getElementById('bend-note-button').addEventListener('click', () => {
+    // Animate the 'A' note on the 10th fret of the 'B' string (string index 1)
+    animateNoteBend(1, 10);
+});
