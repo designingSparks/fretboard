@@ -40,6 +40,69 @@ const HIGHLIGHT_COLORS = {
 const fretboardBody = document.getElementById('fretboard-body');
 const fretboardFooter = document.getElementById('fretboard-footer');
 const allNotes = ["E", "F", "F#", "G", "G#", "A", "A#", "B", "C", "C#", "D", "D#"];
+const FRET_WIDTH_BASE = 80; // The width of the first fret in pixels.
+const FRET_WIDTH_MULTIPLIER = 0.97; // Each fret will be 93% of the width of the one before it.
+
+/**
+ * Calculates the width of each fret, making them progressively smaller.
+ * @returns {number[]} An array of fret widths in pixels.
+ */
+function calculateFretWidths() {
+    const widths = [];
+    let currentWidth = FRET_WIDTH_BASE;
+    for (let i = 0; i < NUM_FRETS; i++) {
+        widths.push(currentWidth);
+        currentWidth *= FRET_WIDTH_MULTIPLIER;
+    }
+    return widths;
+}
+
+/**
+ * Draws the entire fretboard structure, including strings and fret numbers,
+ * with realistic, graduated fret widths.
+ */
+function drawFretboard() {
+    // Clear any existing content
+    fretboardBody.innerHTML = '';
+    fretboardFooter.innerHTML = '';
+
+    const fretWidths = calculateFretWidths();
+
+    // Create the fretboard body (the strings and frets)
+    GUITAR_TUNING.forEach((stringInfo, index) => {
+        const row = document.createElement('tr');
+        const labelCell = document.createElement('td');
+        labelCell.classList.add('string-label');
+        labelCell.dataset.string = index;
+        labelCell.textContent = stringInfo.name; // Set the string name here
+        row.appendChild(labelCell);
+
+        for (let i = 1; i <= NUM_FRETS; i++) {
+            const fretCell = document.createElement('td');
+            fretCell.classList.add('fret');
+            if (i === 1) fretCell.classList.add('nut');
+            fretCell.style.minWidth = `${fretWidths[i - 1]}px`; // Set individual fret width
+            fretCell.dataset.string = index;
+            fretCell.dataset.fret = i;
+            row.appendChild(fretCell);
+        }
+        fretboardBody.appendChild(row);
+    });
+
+    // Create the fretboard footer (the fret numbers)
+    const footerRow = document.createElement('tr');
+    const cornerCell = document.createElement('th');
+    cornerCell.textContent = '0';
+    footerRow.appendChild(cornerCell);
+
+    for (let i = 1; i <= NUM_FRETS; i++) {
+        const header = document.createElement('th');
+        header.textContent = i;
+        header.style.minWidth = `${fretWidths[i - 1]}px`; // Match the fret width
+        footerRow.appendChild(header);
+    }
+    fretboardFooter.appendChild(footerRow);
+}
 
 function findNote(startNote, fret) {
     const startIndex = allNotes.indexOf(startNote);
@@ -47,61 +110,9 @@ function findNote(startNote, fret) {
     return allNotes[noteIndex];
 }
 
-GUITAR_TUNING.forEach((stringInfo, index) => {
-    const row = document.createElement('tr');
-    const labelCell = document.createElement('td');
-    labelCell.classList.add('string-label');
-    labelCell.dataset.string = index;
-    row.appendChild(labelCell);
-
-    for (let i = 1; i <= NUM_FRETS; i++) {
-        const fretCell = document.createElement('td');
-        fretCell.classList.add('fret');
-        if (i === 1) fretCell.classList.add('nut');
-        fretCell.dataset.string = index;
-        fretCell.dataset.fret = i;
-        row.appendChild(fretCell);
-    }
-    fretboardBody.appendChild(row);
-});
-
-const footerRow = document.createElement('tr');
-const cornerCell = document.createElement('th');
-footerRow.appendChild(cornerCell);
-for (let i = 0; i <= NUM_FRETS; i++) {
-    const header = document.createElement('th');
-    header.textContent = i;
-    if (i === 0) {
-        cornerCell.textContent = i;
-    } else {
-        footerRow.appendChild(header);
-    }
-}
-fretboardFooter.appendChild(footerRow);
-
-
 function drawScale(scale) {
-    // Clear the fretboard body before drawing to prevent duplicates
-    fretboardBody.innerHTML = '';
-
-    // Re-create the table rows
-    GUITAR_TUNING.forEach((stringInfo, index) => {
-        const row = document.createElement('tr');
-        const labelCell = document.createElement('td');
-        labelCell.classList.add('string-label');
-        labelCell.dataset.string = index;
-        row.appendChild(labelCell);
-
-        for (let i = 1; i <= NUM_FRETS; i++) {
-            const fretCell = document.createElement('td');
-            fretCell.classList.add('fret');
-            if (i === 1) fretCell.classList.add('nut');
-            fretCell.dataset.string = index;
-            fretCell.dataset.fret = i;
-            row.appendChild(fretCell);
-        }
-        fretboardBody.appendChild(row);
-    });
+    // Clear only the notes, not the entire fretboard structure
+    document.querySelectorAll('.note, .open-string-note').forEach(n => n.remove());
     
     // Draw the notes
     GUITAR_TUNING.forEach((stringInfo, stringIndex) => {
@@ -109,6 +120,8 @@ function drawScale(scale) {
         const openNoteInfo = scale.notes[stringInfo.openNote];
         const labelCell = document.querySelector(`td.string-label[data-string="${stringIndex}"]`);
         if (openNoteInfo) {
+            // Clear the plain text string name before adding the styled note div
+            labelCell.textContent = '';
             const noteDiv = document.createElement('div');
             // Add the note's identity AND the default faded class
             noteDiv.classList.add('open-string-note', openNoteInfo.degree, 'faded-note');
@@ -116,7 +129,7 @@ function drawScale(scale) {
             noteDiv.dataset.fret = 0;
             labelCell.appendChild(noteDiv);
         } else {
-             labelCell.textContent = stringInfo.name;
+             // The string name is now set during fretboard creation
         }
 
         // Handle fretted notes
@@ -298,16 +311,8 @@ const scaleToDraw = cMajorPentatonic;
 
 
 // --- Execution ---
-drawScale(scaleToDraw);
+drawFretboard(); // Draw the board structure first
+drawScale(scaleToDraw); // Then draw the notes on top
 drawStringsAsSVG();
 // To highlight multiple positions, pass an array to the new function.
 highlightPositions(scaleToDraw, ['p5a', 'p1a']);
-
-
-// --- 4. Initial Drawing ---
-// Choose which positions to highlight
-// const positionsToHighlight = [5]; // <-- EDIT THIS ARRAY TO CHANGE HIGHLIGHTS
-
-// drawScale(gMajorPentatonic);
-// // drawScale(cMajor);
-// highlightPositions(positionsToHighlight);
