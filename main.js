@@ -474,6 +474,116 @@ function animateNoteBendSingle(stringIndex, fret) {
       .to(bendProxy, { y: nutY, duration: 0.25, ease: "power1.in" }, "<"); // Release string path
 }
 
+/**
+ * Performs a whole-tone (double) string bend animation.
+ * The primary string bends by two string spacings. When it reaches the adjacent
+ * string, that secondary string also starts bending to the final target position.
+ * @param {number} stringIndex - The index of the string to bend (0-3).
+ * @param {number} fret - The fret number of the note to bend.
+ */
+function animateNoteBendSingleTone(stringIndex, fret) {
+    // A double bend is only physically possible on strings 0-3.
+    if (stringIndex > 3) {
+        console.error(`Cannot perform a double bend on string index ${stringIndex}. Only possible on strings 0-3.`);
+        return;
+    }
+
+    // 1. Identify all elements involved in the animation
+    const primaryFretCell = document.querySelector(`td.fret[data-string="${stringIndex}"][data-fret="${fret}"]`);
+    const secondaryFretCell = document.querySelector(`td.fret[data-string="${stringIndex + 1}"][data-fret="${fret}"]`);
+    const targetFretCell = document.querySelector(`td.fret[data-string="${stringIndex + 2}"][data-fret="${fret}"]`);
+
+    const primaryNote = primaryFretCell?.querySelector('.note');
+    const primaryStringPath = document.getElementById(`string-${stringIndex}`);
+
+    // The secondary note and string (the one being pushed)
+    const secondaryNote = secondaryFretCell?.querySelector('.note');
+    const secondaryStringPath = document.getElementById(`string-${stringIndex + 1}`);
+
+    // The note at the final destination, which will be hidden
+    const targetNote = targetFretCell?.querySelector('.note');
+
+    if (!primaryNote || !primaryStringPath || !secondaryStringPath) {
+        console.error(`Required elements for double bend not found at string ${stringIndex}, fret ${fret}.`);
+        return;
+    }
+
+    // 2. Calculate animation parameters
+    const stringRow = document.querySelector('#fretboard-body tr');
+    if (!stringRow) return;
+    const bendDistance = stringRow.offsetHeight;
+    const totalBendDistance = bendDistance * 2;
+
+    const diagramRect = document.querySelector('.fretboard-diagram').getBoundingClientRect();
+    const primaryFretRect = primaryFretCell.getBoundingClientRect();
+
+    // 3. Get geometry and create proxy objects for both strings
+    const primaryGeom = STRING_GEOMETRY[stringIndex];
+    const secondaryGeom = STRING_GEOMETRY[stringIndex + 1];
+    const { nut: { x: pNutX, y: pNutY }, saddle: { x: pSaddleX } } = primaryGeom;
+    const { nut: { x: sNutX, y: sNutY }, saddle: { x: sSaddleX } } = secondaryGeom;
+
+    const bendPointX = primaryFretRect.left - diagramRect.left + (primaryFretRect.width / 2);
+
+    let primaryBendProxy = { y: pNutY };
+    let secondaryBendProxy = { y: sNutY };
+
+    // 4. Create the GSAP timeline
+    const tl = gsap.timeline({
+        onStart: () => {
+            gsap.set([primaryNote, secondaryNote], { zIndex: 3 }); // Bring both moving notes to the top
+        },
+        onUpdate: () => {
+            // Update both string paths on every frame
+            const pPath = `M ${pNutX} ${pNutY} L ${bendPointX} ${primaryBendProxy.y} L ${pSaddleX} ${pNutY}`;
+            const sPath = `M ${sNutX} ${sNutY} L ${bendPointX} ${secondaryBendProxy.y} L ${sSaddleX} ${sNutY}`;
+            gsap.set(primaryStringPath, { attr: { d: pPath } });
+            gsap.set(secondaryStringPath, { attr: { d: sPath } });
+        },
+        onComplete: () => {
+            // Reset everything to its original state
+            const pOriginalPath = `M ${pNutX} ${pNutY} L ${pSaddleX} ${pNutY}`;
+            const sOriginalPath = `M ${sNutX} ${sNutY} L ${sSaddleX} ${sNutY}`;
+            gsap.set(primaryStringPath, { attr: { d: pOriginalPath } });
+            gsap.set(secondaryStringPath, { attr: { d: sOriginalPath } });
+            gsap.set([primaryNote, secondaryNote], { zIndex: 2 });
+        }
+    });
+
+    // 5. Define animation sequence
+    const primaryStartY = gsap.getProperty(primaryNote, "y");
+    const secondaryStartY = secondaryNote ? gsap.getProperty(secondaryNote, "y") : 0;
+
+    const bendDuration = 0.25;
+    const holdDuration = 0.5;
+
+    // --- BEND ---
+    // Primary note/string bends for the full duration
+    tl.to(primaryNote, { y: primaryStartY + totalBendDistance, duration: bendDuration, ease: "power1.out" });
+    tl.to(primaryBendProxy, { y: pNutY + totalBendDistance, duration: bendDuration, ease: "power1.out" }, "<");
+
+    // Secondary note/string starts halfway through, and animates for half the duration
+    const secondaryAnimationStartTime = bendDuration / 2;
+    const secondaryAnimationDuration = bendDuration / 2;
+    if (secondaryNote) {
+        tl.to(secondaryNote, { y: secondaryStartY + bendDistance, duration: secondaryAnimationDuration, ease: "none" }, secondaryAnimationStartTime);
+    }
+    tl.to(secondaryBendProxy, { y: sNutY + bendDistance, duration: secondaryAnimationDuration, ease: "none" }, secondaryAnimationStartTime);
+
+    // --- HOLD ---
+    tl.to({}, { duration: holdDuration });
+
+    // --- RELEASE ---
+    // The release is the reverse of the bend
+    tl.to(primaryNote, { y: primaryStartY, duration: bendDuration, ease: "power1.in" });
+    tl.to(primaryBendProxy, { y: pNutY, duration: bendDuration, ease: "power1.in" }, "<");
+
+    if (secondaryNote) {
+        tl.to(secondaryNote, { y: secondaryStartY, duration: secondaryAnimationDuration, ease: "none" }, "<");
+    }
+    tl.to(secondaryBendProxy, { y: sNutY, duration: secondaryAnimationDuration, ease: "none" }, "<");
+}
+
 // --- 4. Initial Drawing ---
 // Choose which SCALE to draw
 const scaleToDraw = cMajorPentatonic;
@@ -493,6 +603,7 @@ highlightPositions(scaleToDraw, ['p5a', 'p1a']);
 document.getElementById('bend-note-button').addEventListener('click', () => {
     // Animate the 'A' note on the 10th fret of the 'B' string (string index 1)
     // animateNoteBendSingle(1, 10);
-    // animateNoteBendSingle(0, 10);
-    animateNoteBendSingle(2, 9);
+    // animateNoteBendSingle(2, 9);
+    // Example of a double bend: Bending the G string at the 9th fret (E note) up a whole tone to F#.
+    animateNoteBendSingleTone(2,9);
 });
