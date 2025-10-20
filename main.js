@@ -23,6 +23,11 @@ const STRING_CONFIG = [
 // This is used to calculate the shape of the bent string. A larger number creates a more subtle angle.
 const VIRTUAL_SCALE_LENGTH_PX = 5000;
 
+// Factor determining when the secondary string starts moving during a double bend.
+// A value of 0.5 means it starts when the primary bend is halfway; 0.25 means it starts at 25%.
+// This creates a smoother, more realistic overlap.
+const DOUBLE_BEND_OVERLAP_FACTOR = 0.3;
+
 // This will be populated by drawStringsAsSVG with the coordinates for each string.
 let STRING_GEOMETRY = [];
 
@@ -562,13 +567,16 @@ function animateNoteBendSingleTone(stringIndex, fret) {
     tl.to(primaryNote, { y: primaryStartY + totalBendDistance, duration: bendDuration, ease: "power1.out" });
     tl.to(primaryBendProxy, { y: pNutY + totalBendDistance, duration: bendDuration, ease: "power1.out" }, "<");
 
-    // Secondary note/string starts halfway through, and animates for half the duration
-    const secondaryAnimationStartTime = bendDuration / 2;
-    const secondaryAnimationDuration = bendDuration / 2;
+    // To create a smoother, more realistic bend, the secondary string starts moving
+    // before the primary string has traveled the full first string-spacing.
+    // We'll start the secondary animation based on the overlap factor.
+    const secondaryAnimationStartTime = bendDuration * DOUBLE_BEND_OVERLAP_FACTOR;
+    // The duration is adjusted so it still finishes at the same time as the primary bend.
+    const secondaryAnimationDuration = bendDuration - secondaryAnimationStartTime;
     if (secondaryNote) {
-        tl.to(secondaryNote, { y: secondaryStartY + bendDistance, duration: secondaryAnimationDuration, ease: "none" }, secondaryAnimationStartTime);
+        tl.to(secondaryNote, { y: secondaryStartY + bendDistance, duration: secondaryAnimationDuration, ease: "power1.out" }, secondaryAnimationStartTime);
     }
-    tl.to(secondaryBendProxy, { y: sNutY + bendDistance, duration: secondaryAnimationDuration, ease: "none" }, secondaryAnimationStartTime);
+    tl.to(secondaryBendProxy, { y: sNutY + bendDistance, duration: secondaryAnimationDuration, ease: "power1.out" }, secondaryAnimationStartTime);
 
     // --- HOLD ---
     tl.to({}, { duration: holdDuration });
@@ -579,9 +587,9 @@ function animateNoteBendSingleTone(stringIndex, fret) {
     tl.to(primaryBendProxy, { y: pNutY, duration: bendDuration, ease: "power1.in" }, "<");
 
     if (secondaryNote) {
-        tl.to(secondaryNote, { y: secondaryStartY, duration: secondaryAnimationDuration, ease: "none" }, "<");
+        tl.to(secondaryNote, { y: secondaryStartY, duration: secondaryAnimationDuration, ease: "power1.in" }, "<" + secondaryAnimationStartTime);
     }
-    tl.to(secondaryBendProxy, { y: sNutY, duration: secondaryAnimationDuration, ease: "none" }, "<");
+    tl.to(secondaryBendProxy, { y: sNutY, duration: secondaryAnimationDuration, ease: "power1.in" }, "<" + secondaryAnimationStartTime);
 }
 
 // --- 4. Initial Drawing ---
