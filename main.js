@@ -419,8 +419,15 @@ function animateNoteBend(stringIndex, fret) {
     const tl = gsap.timeline({
         onUpdate: () => {
             // On every frame of the animation, update the SVG path's 'd' attribute
-            const newPath = `M ${nutX} ${nutY} L ${bendPointX} ${bendProxy.y} L ${saddleX} ${nutY}`;
+            // This creates the "V" shape of the bent string.
+            const newPath = `M ${nutX} ${nutY} L ${bendPointX} ${bendProxy.y} L ${saddleX} ${nutY}`; 
             gsap.set(stringPath, { attr: { d: newPath } });
+        },
+        // After the animation completes, reset the path to a simple straight line.
+        // This prevents issues on subsequent animations.
+        onComplete: () => {
+            const originalPath = `M ${nutX} ${nutY} L ${saddleX} ${nutY}`;
+            gsap.set(stringPath, { attr: { d: originalPath } });
         }
     });
 
