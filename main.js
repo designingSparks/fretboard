@@ -1,7 +1,8 @@
 import { cMajorPentatonic, gMajorPentatonic, aMinorPentatonic, cMajor } from './scales.js';
 
 // --- 1. Configuration ---
-const NUM_FRETS = 15;
+const SHOW_DOTS = false; // Set to false to hide fret markers
+const NUM_FRETS = 18;
 const GUITAR_TUNING = [
     { name: 'e', openNote: 'E' }, { name: 'B', openNote: 'B' },
     { name: 'G', openNote: 'G' }, { name: 'D', openNote: 'D' },
@@ -130,21 +131,23 @@ function drawFretMarkers() {
 
         // --- Double Dots ---
         if (doubleDotFrets.includes(fretInPattern)) {
-            // Place first dot between B and G strings
+            // Place first dot between the 1st (e) and 2nd (B) strings.
+            // We target the 2nd string's cell (index 1) and position the dot at the top.
             const topCell = document.querySelector(`.fret[data-string="1"][data-fret="${fret}"]`);
             if (topCell) {
                 const dot1 = document.createElement('div');
                 dot1.className = 'fret-marker-dot';
-                dot1.style.top = '50%';
+                dot1.style.top = '0'; // Position at the top of the cell
                 dot1.style.transform = 'translate(-50%, -50%)';
                 topCell.appendChild(dot1);
             }
-            // Place second dot between D and A strings
-            const bottomCell = document.querySelector(`.fret[data-string="3"][data-fret="${fret}"]`);
+            // Place second dot between the 5th (A) and 6th (E) strings.
+            // We target the 6th string's cell (index 5) and position the dot at the top.
+            const bottomCell = document.querySelector(`.fret[data-string="5"][data-fret="${fret}"]`);
             if (bottomCell) {
                 const dot2 = document.createElement('div');
                 dot2.className = 'fret-marker-dot';
-                dot2.style.top = '50%';
+                dot2.style.top = '0'; // Position at the top of the cell
                 dot2.style.transform = 'translate(-50%, -50%)';
                 bottomCell.appendChild(dot2);
             }
@@ -360,8 +363,10 @@ const scaleToDraw = cMajorPentatonic;
 
 // --- Execution ---
 drawFretboard();    // 1. Draw the board structure first
-drawFretMarkers();  // 2. Add the fret marker dots
-// drawScale(scaleToDraw); // Then draw the notes on top
+if (SHOW_DOTS) {
+    drawFretMarkers();  // 2. Add the fret marker dots
+}
+drawScale(scaleToDraw); // Then draw the notes on top
 drawStringsAsSVG();
 // To highlight multiple positions, pass an array to the new function.
 highlightPositions(scaleToDraw, ['p5a', 'p1a']);
