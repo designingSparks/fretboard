@@ -23,6 +23,9 @@ const STRING_CONFIG = [
 // This is used to calculate the shape of the bent string. A larger number creates a more subtle angle.
 const VIRTUAL_SCALE_LENGTH_PX = 5000;
 
+// This will be populated by drawStringsAsSVG with the coordinates for each string.
+let STRING_GEOMETRY = [];
+
 // --- New Data Structure for Positions ---
 const pentatonicPositions = [
     { position: 1, frets: { min: 2, max: 5 } },
@@ -169,8 +172,11 @@ function drawScale(scale) {
     // Clear only the notes, not the entire fretboard structure
     document.querySelectorAll('.note, .open-string-note').forEach(n => n.remove());
     
-    // Draw the notes
-    GUITAR_TUNING.forEach((stringInfo, stringIndex) => {
+    // Draw the notes, iterating from the low E string up to the high e string.
+    // This ensures that higher-pitched strings (which are higher on the screen)
+    // are rendered on top of lower-pitched ones, which is crucial for the bend animation.
+    for (let stringIndex = GUITAR_TUNING.length - 1; stringIndex >= 0; stringIndex--) {
+        const stringInfo = GUITAR_TUNING[stringIndex];
         // Handle open strings
         const openNoteInfo = scale.notes[stringInfo.openNote];
         const labelCell = document.querySelector(`td.string-label[data-string="${stringIndex}"]`);
@@ -201,7 +207,7 @@ function drawScale(scale) {
                 cell.appendChild(noteDiv);
             }
         }
-    });
+    }
 }
 
 // function highlightPositions(positionsToHighlight) {
@@ -344,6 +350,9 @@ function drawStringsAsSVG() {
     // The saddle is far to the right. We'll use our virtual scale length for this.
     const saddleX = x1 + VIRTUAL_SCALE_LENGTH_PX;
 
+    // Clear any previous geometry data
+    STRING_GEOMETRY = [];
+
     GUITAR_TUNING.forEach((stringInfo, index) => {
         const stringRow = document.querySelector(`td.string-label[data-string="${index}"]`).parentElement;
         const rowRect = stringRow.getBoundingClientRect();
@@ -351,10 +360,16 @@ function drawStringsAsSVG() {
         // Calculate the vertical center of the row relative to the diagram container
         const y = Math.round(rowRect.top - diagramRect.top + (rowRect.height / 2));
 
+        // Store the calculated geometry for later use in animations
+        STRING_GEOMETRY[index] = {
+            nut: { x: x1, y: y },
+            saddle: { x: saddleX, y: y }
+        };
+
         // Use a <path> instead of a <line> to allow for bending
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         // The path starts at the nut (M x1 y), goes to the saddle (L saddleX y)
-        path.setAttribute('d', `M ${x1} ${y} L ${saddleX} ${y}`);
+        path.setAttribute('d', `M ${STRING_GEOMETRY[index].nut.x} ${STRING_GEOMETRY[index].nut.y} L ${STRING_GEOMETRY[index].saddle.x} ${STRING_GEOMETRY[index].saddle.y}`);
         path.setAttribute('stroke', STRING_CONFIG[index].color);
         path.setAttribute('stroke-width', STRING_CONFIG[index].width);
         path.setAttribute('fill', 'none'); // Paths can be filled, we don't want that
@@ -372,7 +387,14 @@ function drawStringsAsSVG() {
  * @param {number} stringIndex - The index of the string (0-5).
  * @param {number} fret - The fret number of the note to bend.
  */
-function animateNoteBend(stringIndex, fret) {
+function animateNoteBendSingle(stringIndex, fret) {
+    // Bending is only possible towards the low E string (downwards on screen).
+    // It's physically impossible to bend the lowest string (index 5) itself.
+    if (stringIndex >= 5) {
+        console.error(`Cannot bend the low E string (index ${stringIndex}). Bending is only possible on strings 0-4.`);
+        return; // Exit the function, ignoring the animation.
+    }
+
     // 1. Find the target note element
     const fretCellSelector = `td.fret[data-string="${stringIndex}"][data-fret="${fret}"]`;
     const fretCell = document.querySelector(fretCellSelector);
@@ -403,11 +425,13 @@ function animateNoteBend(stringIndex, fret) {
     const fretRect = fretCell.getBoundingClientRect();
     const stringRect = stringRow.getBoundingClientRect();
 
-    // Get the initial path data to find the start and end points
-    const pathData = stringPath.getAttribute('d').split(' ');
-    const nutX = parseFloat(pathData[1]);
-    const nutY = parseFloat(pathData[2]);
-    const saddleX = parseFloat(pathData[4]);
+    // Get geometry from our pre-calculated data structure. This is more robust.
+    const stringGeom = STRING_GEOMETRY[stringIndex];
+    if (!stringGeom) {
+        console.error(`String geometry not found for string index ${stringIndex}.`);
+        return;
+    }
+    const { nut: { x: nutX, y: nutY }, saddle: { x: saddleX } } = stringGeom;
 
     // The point on the string we are "pushing"
     const bendPointX = fretRect.left - diagramRect.left + (fretRect.width / 2);
@@ -417,26 +441,36 @@ function animateNoteBend(stringIndex, fret) {
 
     // 5. Create the GSAP timeline
     const tl = gsap.timeline({
+        onStart: () => {
+            // Temporarily increase z-index to ensure the bending note is on top
+            gsap.set(noteToBend, { zIndex: 3 });
+        },
         onUpdate: () => {
             // On every frame of the animation, update the SVG path's 'd' attribute
             // This creates the "V" shape of the bent string.
-            const newPath = `M ${nutX} ${nutY} L ${bendPointX} ${bendProxy.y} L ${saddleX} ${nutY}`; 
+            const newPath = `M ${nutX} ${nutY} L ${bendPointX} ${bendProxy.y} L ${saddleX} ${nutY}`;
             gsap.set(stringPath, { attr: { d: newPath } });
         },
         // After the animation completes, reset the path to a simple straight line.
         // This prevents issues on subsequent animations.
         onComplete: () => {
-            const originalPath = `M ${nutX} ${nutY} L ${saddleX} ${nutY}`;
+            const originalPath = `M ${nutX} ${nutY} L ${saddleX} ${nutY}`; // Use the stored nut/saddle X
             gsap.set(stringPath, { attr: { d: originalPath } });
+            // Reset z-index to its original value
+            gsap.set(noteToBend, { zIndex: 2 });
         }
     });
 
     // Animate the note and the proxy object separately on the same timeline.
     // The "<" at the start of the second .to() call makes it start at the same time as the previous one.
-    tl.to(noteToBend, { y: bendDistance, duration: 0.25, ease: "power1.out" }) // Bend note
+    // We get the note's initial Y position to ensure the animation is perfectly aligned with the string path.
+    const startY = gsap.getProperty(noteToBend, "y");
+    const endY = startY + bendDistance;
+
+    tl.to(noteToBend, { y: endY, duration: 0.25, ease: "power1.out" }) // Bend note
       .to(bendProxy, { y: `+=${bendDistance}`, duration: 0.25, ease: "power1.out" }, "<") // Bend string path
       .to({}, { duration: 0.5 }) // Hold (empty tween for a delay)
-      .to(noteToBend, { y: 0, duration: 0.25, ease: "power1.in" }) // Release note
+      .to(noteToBend, { y: startY, duration: 0.25, ease: "power1.in" }) // Release note
       .to(bendProxy, { y: nutY, duration: 0.25, ease: "power1.in" }, "<"); // Release string path
 }
 
@@ -458,5 +492,7 @@ highlightPositions(scaleToDraw, ['p5a', 'p1a']);
 // --- Animation Trigger ---
 document.getElementById('bend-note-button').addEventListener('click', () => {
     // Animate the 'A' note on the 10th fret of the 'B' string (string index 1)
-    animateNoteBend(1, 10);
+    // animateNoteBendSingle(1, 10);
+    // animateNoteBendSingle(0, 10);
+    animateNoteBendSingle(2, 9);
 });
