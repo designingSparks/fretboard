@@ -10,12 +10,12 @@ const GUITAR_TUNING = [
 
 // Configuration for SVG strings, previously handled in CSS
 const STRING_CONFIG = [
-    { width: 2.1, color: '#ccc' }, // High e
-    { width: 2.4, color: '#ccc' }, // B
-    { width: 2.7, color: '#ccc' }, // G
-    { width: 3.0, color: '#ccc' }, // D
-    { width: 3.3, color: '#ccc' }, // A
-    { width: 3.6, color: '#ccc' }  // Low E
+    { width: 2.1, color: '#a9a9a9' }, // High e
+    { width: 2.4, color: '#a9a9a9' }, // B
+    { width: 2.7, color: '#a9a9a9' }, // G
+    { width: 3.0, color: '#a9a9a9' }, // D
+    { width: 3.3, color: '#a9a9a9' }, // A
+    { width: 3.6, color: '#a9a9a9' }  // Low E
 ];
 
 // --- New Data Structure for Positions ---
@@ -102,6 +102,54 @@ function drawFretboard() {
         footerRow.appendChild(header);
     }
     fretboardFooter.appendChild(footerRow);
+}
+
+/**
+ * Draws the fret marker dots (inlays) on the fretboard.
+ */
+function drawFretMarkers() {
+    const singleDotFrets = [3, 5, 7, 9];
+    const doubleDotFrets = [12];
+
+    for (let fret = 1; fret <= NUM_FRETS; fret++) {
+        const fretInPattern = ((fret - 1) % 12) + 1;
+
+        // --- Single Dots ---
+        if (singleDotFrets.includes(fretInPattern)) {
+            // Place the dot on the line between the 3rd (G) and 4th (D) strings.
+            // We target the 4th string's cell (index 3) and position the dot at the top.
+            const targetCell = document.querySelector(`.fret[data-string="3"][data-fret="${fret}"]`);
+            if (targetCell) {
+                const dot = document.createElement('div');
+                dot.className = 'fret-marker-dot';
+                dot.style.top = '0'; // Position at the top of the cell
+                dot.style.transform = 'translate(-50%, -50%)';
+                targetCell.appendChild(dot);
+            }
+        }
+
+        // --- Double Dots ---
+        if (doubleDotFrets.includes(fretInPattern)) {
+            // Place first dot between B and G strings
+            const topCell = document.querySelector(`.fret[data-string="1"][data-fret="${fret}"]`);
+            if (topCell) {
+                const dot1 = document.createElement('div');
+                dot1.className = 'fret-marker-dot';
+                dot1.style.top = '50%';
+                dot1.style.transform = 'translate(-50%, -50%)';
+                topCell.appendChild(dot1);
+            }
+            // Place second dot between D and A strings
+            const bottomCell = document.querySelector(`.fret[data-string="3"][data-fret="${fret}"]`);
+            if (bottomCell) {
+                const dot2 = document.createElement('div');
+                dot2.className = 'fret-marker-dot';
+                dot2.style.top = '50%';
+                dot2.style.transform = 'translate(-50%, -50%)';
+                bottomCell.appendChild(dot2);
+            }
+        }
+    }
 }
 
 function findNote(startNote, fret) {
@@ -311,8 +359,9 @@ const scaleToDraw = cMajorPentatonic;
 
 
 // --- Execution ---
-drawFretboard(); // Draw the board structure first
-drawScale(scaleToDraw); // Then draw the notes on top
+drawFretboard();    // 1. Draw the board structure first
+drawFretMarkers();  // 2. Add the fret marker dots
+// drawScale(scaleToDraw); // Then draw the notes on top
 drawStringsAsSVG();
 // To highlight multiple positions, pass an array to the new function.
 highlightPositions(scaleToDraw, ['p5a', 'p1a']);
