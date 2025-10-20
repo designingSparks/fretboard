@@ -8,6 +8,15 @@ const GUITAR_TUNING = [
     { name: 'A', openNote: 'A' }, { name: 'E', openNote: 'E' },
 ];
 
+// Configuration for SVG strings, previously handled in CSS
+const STRING_CONFIG = [
+    { width: 2.1, color: '#ccc' }, // High e
+    { width: 2.4, color: '#ccc' }, // B
+    { width: 2.7, color: '#ccc' }, // G
+    { width: 3.0, color: '#ccc' }, // D
+    { width: 3.3, color: '#ccc' }, // A
+    { width: 3.6, color: '#ccc' }  // Low E
+];
 
 // --- New Data Structure for Positions ---
 const pentatonicPositions = [
@@ -25,6 +34,7 @@ const HIGHLIGHT_COLORS = {
     fifth: '#ffd700',  // Yellow
     default: '#444'    // Black / Dark Grey
 };
+
 
 // --- 2. Fretboard Generation ---
 const fretboardBody = document.getElementById('fretboard-body');
@@ -242,15 +252,54 @@ function highlightPositions(scale, positionNames) {
     });
 }
 
+/**
+ * Renders guitar strings as SVG <line> elements over the fretboard table.
+ * This allows for easier animation with libraries like GSAP.
+ */
+function drawStringsAsSVG() {
+    const svgContainer = document.getElementById('string-svg-container');
+    const fretboardDiagram = document.querySelector('.fretboard-diagram');
+    if (!svgContainer || !fretboardDiagram) return;
+
+    // Clear any existing strings
+    svgContainer.innerHTML = '';
+
+    // Get the bounding box of the entire fretboard diagram to calculate relative positions
+    const diagramRect = fretboardDiagram.getBoundingClientRect();
+
+    // Determine the horizontal start and end points for the strings
+    const firstFretCell = document.querySelector('.fret[data-fret="1"]');
+    const lastFretCell = document.querySelector(`.fret[data-fret="${NUM_FRETS}"]`);
+    const x1 = firstFretCell.getBoundingClientRect().left - diagramRect.left;
+    const x2 = lastFretCell.getBoundingClientRect().right - diagramRect.left;
+
+    GUITAR_TUNING.forEach((stringInfo, index) => {
+        const stringRow = document.querySelector(`td.string-label[data-string="${index}"]`).parentElement;
+        const rowRect = stringRow.getBoundingClientRect();
+
+        // Calculate the vertical center of the row relative to the diagram container
+        const y = rowRect.top - diagramRect.top + (rowRect.height / 2);
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', x1);
+        line.setAttribute('y1', y);
+        line.setAttribute('x2', x2);
+        line.setAttribute('y2', y);
+        line.setAttribute('stroke', STRING_CONFIG[index].color);
+        line.setAttribute('stroke-width', STRING_CONFIG[index].width);
+        line.id = `string-${index}`; // Add an ID for easy selection with GSAP
+        svgContainer.appendChild(line);
+    });
+}
+
 // --- 4. Initial Drawing ---
 // Choose which SCALE to draw
 const scaleToDraw = cMajorPentatonic;
 
-// Choose which POSITION from that scale to highlight
-const positionToHighlight = 'pos_custom1'; 
 
 // --- Execution ---
 drawScale(scaleToDraw);
+drawStringsAsSVG();
 // To highlight multiple positions, pass an array to the new function.
 highlightPositions(scaleToDraw, ['p5a', 'p1a']);
 

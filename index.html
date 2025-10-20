@@ -18,6 +18,15 @@
             line-height: 1.2;
             display: inline-block;
         }
+        /* Add position relative to contain the absolutely positioned SVG */
+        .fretboard-diagram {
+            position: relative;
+        }
+        #string-svg-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; /* Place SVG strings between frets (z-index: 0) and notes (z-index: 2) */
+        }
         table {
             border-collapse: collapse;
             border-spacing: 0;
@@ -30,8 +39,8 @@
             min-width: 64px;
         }
         .fret {
-             /* background-color: #f9f9f9; */
-             background-color: #bdac9e77;
+             background-color: #f9f9f9;
+             /* background-color: #bdac9e77; */
         }
         .string-label {
             background-color: #fff;
@@ -70,36 +79,6 @@
         .nut {
             border-left: 5px solid #333;
         }
-        /* .fret::after {
-            content: '';
-            display: block;
-            position: absolute;
-            top: 50%;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background-color: #ccc;
-            z-index: 1;
-        } */
-        .fret::after {
-            content: '';
-            display: block;
-            position: absolute;
-            top: 50%;
-            left: 0;
-            width: 100%;
-            transform: translateY(-50%); /* Center the string perfectly */
-            background-color: #ccc;
-            z-index: 1;
-        }
-
-        /* --- Realistic String Widths --- */
-        td[data-string="0"]::after { height: 2.1px; }   /* High e string */
-        td[data-string="1"]::after { height: 2.4px; } /* B string */
-        td[data-string="2"]::after { height: 2.7px; } /* G string */
-        td[data-string="3"]::after { height: 3px; }   /* D string (Baseline) */
-        td[data-string="4"]::after { height: 3.3px; } /* A string */
-        td[data-string="5"]::after { height: 3.6px; }   /* Low E string */
 
         .note, .open-string-note {
             background-color: #444; /* Default dark grey for all scale notes */
@@ -129,6 +108,8 @@
         <tbody id="fretboard-body"></tbody>
         <tfoot id="fretboard-footer"></tfoot>
     </table>
+    <!-- SVG container for strings. It will be populated by main.js -->
+    <svg id="string-svg-container"></svg>
 </div>
 
 <script src="main.js" type="module"></script>
