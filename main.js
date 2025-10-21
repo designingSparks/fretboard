@@ -392,7 +392,7 @@ function drawStringsAsSVG() {
  * @param {number} stringIndex - The index of the string (0-5).
  * @param {number} fret - The fret number of the note to bend.
  */
-function animateNoteBendSingle(stringIndex, fret) {
+function animateNoteBendHalfTone(stringIndex, fret) {
     // Bending is only possible towards the low E string (downwards on screen).
     // It's physically impossible to bend the lowest string (index 5) itself.
     if (stringIndex >= 5) {
@@ -486,7 +486,7 @@ function animateNoteBendSingle(stringIndex, fret) {
  * @param {number} stringIndex - The index of the string to bend (0-3).
  * @param {number} fret - The fret number of the note to bend.
  */
-function animateNoteBendSingleTone(stringIndex, fret) {
+function animateNoteBendWholeTone(stringIndex, fret) {
     // A double bend is only physically possible on strings 0-3.
     if (stringIndex > 3) {
         console.error(`Cannot perform a double bend on string index ${stringIndex}. Only possible on strings 0-3.`);
@@ -613,5 +613,5 @@ document.getElementById('bend-note-button').addEventListener('click', () => {
     // animateNoteBendSingle(1, 10);
     // animateNoteBendSingle(2, 9);
     // Example of a double bend: Bending the G string at the 9th fret (E note) up a whole tone to F#.
-    animateNoteBendSingleTone(2,9);
+    animateNoteBendWholeTone(2,9);
 });
