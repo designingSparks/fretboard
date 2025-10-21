@@ -607,6 +607,25 @@ drawStringsAsSVG();
 // To highlight multiple positions, pass an array to the new function.
 highlightPositions(scaleToDraw, ['p5a', 'p1a']);
 
+// --- New Wrapper Function for Python Calls ---
+/**
+ * Receives a bend animation request from Python and dispatches to the appropriate JS function.
+ * This function is exposed globally for PySide6's runJavaScript to call.
+ * @param {number} stringIndex - The 0-based index of the string to bend.
+ * @param {number} fret - The 1-based fret number.
+ * @param {number} halftones - 1 for a half-tone bend, 2 for a whole-tone bend.
+ */
+window.handlePythonBendRequest = function(stringIndex, fret, halftones) {
+    console.log(`Received bend request from Python: string=${stringIndex}, fret=${fret}, halftones=${halftones}`);
+    if (halftones === 1) {
+        animateNoteBendHalfTone(stringIndex, fret);
+    } else if (halftones === 2) {
+        animateNoteBendWholeTone(stringIndex, fret);
+    } else {
+        console.warn(`Unknown bend type requested from Python: ${halftones} halftones.`);
+    }
+};
+
 // --- Animation Trigger ---
 document.getElementById('bend-note-button').addEventListener('click', () => {
     // Animate the 'A' note on the 10th fret of the 'B' string (string index 1)
