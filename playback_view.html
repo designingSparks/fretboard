@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fretboard Playback</title>
+    <style>
+        body { font-family: sans-serif; background-color: #282c34; color: #abb2bf; display: grid; place-content: center; height: 100vh; margin: 0; }
+        h1 { font-size: 3rem; font-weight: 300; }
+    </style>
+</head>
+<body>
+
+    <h1 id="note-display">Ready to play...</h1>
+
+    <script>
+        // This function will be called from the Python script
+        function setPlayingNote(noteName) {
+            const displayElement = document.getElementById('note-display');
+            displayElement.textContent = `Playing: ${noteName}`;
+        }
+
+        function clearDisplay() {
+            document.getElementById('note-display').textContent = 'Playback Stopped';
+        }
+    </script>
+</body>
+</html>
