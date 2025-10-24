@@ -1,1 +1,4 @@
 tasks.todo
+clean
+notes
+*.pyc
