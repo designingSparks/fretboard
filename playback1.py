@@ -8,46 +8,14 @@ from PySide6.QtMultimedia import QSoundEffect
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton
 
-T_NOTE = 500
+from scales import C_MAJOR
 
 class FretboardPlayer(QWidget):
     def __init__(self):
         super().__init__()
         
-        #This is the scale that will be played
-        self.scale = [
-            # Low E string
-            ('E', 3, T_NOTE),
-            ('E', 5, T_NOTE),
-            
-            # A string
-            ('A', 2, T_NOTE),
-            ('A', 3, T_NOTE),
-            ('A', 5, T_NOTE),
-            
-            # D string
-            ('D', 2, T_NOTE),
-            ('D', 3, T_NOTE),
-            ('D', 5, T_NOTE),
-            
-            # G string
-            ('G', 2, T_NOTE),
-            ('G', 4, T_NOTE),
-            ('G', 5, T_NOTE),
-            
-            # B string
-            ('B', 3, T_NOTE),
-            ('B', 5, T_NOTE),
-            ('B', 6, T_NOTE),
-            
-            # High e string
-            ('e', 3, T_NOTE),
-            ('e', 5, 1000)
-        ]
-        # --- Playlist ---
-        # 'midi' contains the MIDI note numbers to play.
-        # 'duration' contains the duration for each note in milliseconds.
         self.audio_folder = 'notes'
+        self.scale = C_MAJOR #TODO: Allow scale to be selectable in the GUI
         self.init_midi()
         self.init_sound()
 
