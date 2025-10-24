@@ -1,3 +1,5 @@
+# Note that you need to use pitch shifting to get notes above 80.
+
 # A fretboard is defined by a fretnumber from 0 to 24, with 0 being the nut, and string number from 
 # 1 to 6, with 1 being the top e string and 6 the bottom (low) E string.
 # This file cycles through each note on the fretboard and creates a dictionary that stores the 
@@ -16,7 +18,8 @@ MIDI_PORT_NAME = 'Kontakt 8 Virtual Input'
 
 # Audio recording constants
 SAMPLE_RATE = 44100  # Standard CD-quality audio
-RECORDING_CHANNELS = 2 # Stereo
+# RECORDING_CHANNELS = 2 # Stereo
+RECORDING_CHANNELS = 1 # Mono
 INPUT_DEVICE = 'BlackHole 2ch' # The name of your virtual audio driver
 
 NOTE_DURATION_S = 0.4 # How long each note plays in seconds
@@ -270,7 +273,7 @@ if __name__ == "__main__":
     # INTER_NOTE_DELAY_S = 1 # A short delay between each recording
     for midi_note in notes_to_record:
         fname = f"note_{midi_note}"
-        play_and_record(midi_note + MIDI_OFFSET, duration=0.5, saveas='wav', filename=fname)
+        play_and_record(midi_note + MIDI_OFFSET, duration=1.2, saveas='wav', filename=fname)
         # time.sleep(0.1)
 
     print("\nBatch recording complete.")

@@ -8,13 +8,15 @@ from PySide6.QtMultimedia import QSoundEffect
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton
 
-from scales import C_MAJOR
+from scales import C_MAJOR, C_MAJOR_NOTES
+
+NOTE_FOLDER = 'clean'
 
 class FretboardPlayer(QWidget):
     def __init__(self):
         super().__init__()
         
-        self.audio_folder = 'notes'
+        self.audio_folder = NOTE_FOLDER
         self.scale = C_MAJOR #TODO: Allow scale to be selectable in the GUI
         self.init_midi()
         self.init_sound()
@@ -94,6 +96,16 @@ class FretboardPlayer(QWidget):
             sound_to_play = self.sound_list[self.play_index]
             sound_to_play.play()
 
+
+    def init_fretboard(self):
+        '''
+        Initialize the fretboard with the notes in a greyed out state.
+        '''
+        pass
+        
+
+
+
     def highlight_fretboard(self, note_name):
         # This function runs JavaScript on your HTML page.
         # Calls the setPlayingNote function in playback_view.html
@@ -138,7 +150,7 @@ class FretboardPlayer(QWidget):
         self.sound_list = list()
         for note_id in self.midi:
             sound_effect = QSoundEffect()
-            filename = f"note_{note_id}.wav"
+            filename = f"clean_{note_id}.wav"
             file_path = os.path.abspath(os.path.join(self.audio_folder, filename))
             # TODO: Check if file_path exists and handle error if not.
             sound_effect.setSource(QUrl.fromLocalFile(file_path))

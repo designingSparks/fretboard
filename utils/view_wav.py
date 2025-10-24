@@ -13,7 +13,8 @@ from scipy.io import wavfile
 # wavfile.write('example_A4_tone.wav', sample_rate_dummy, data_dummy)
 # -------------------------------------------------
 
-FNAME = '../notes/note_65.wav'
+# FNAME = '../notes/note_60.wav'
+FNAME = '../clean/clean_60.wav'
 
 # 1. Read the .wav file
 #    'samplerate' is samples per second (e.g., 44100)
