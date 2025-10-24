@@ -63,8 +63,8 @@ class FretboardPlayer(QWidget):
         # Stop any sound that might be playing from the list
         for sound in self.sound_list:
             sound.stop()
-        # Clear the note display on the web page
-        # self.clear_fretboard_highlight()
+        # Clear any note highlights
+        self.clear_note_highlights()
 
     def play_next_note(self):
         # Stop condition: flag is false or playlist is finished
@@ -116,10 +116,14 @@ class FretboardPlayer(QWidget):
         js_code = f"highlightNote('{string}', {fret});"
         self.web_view.page().runJavaScript(js_code)
 
-    #TO DELETE
-    # def clear_fretboard_highlight(self):
-    #     # Calls the clearDisplay function in playback_view.html
-    #     self.web_view.page().runJavaScript("clearDisplay();")
+
+
+    def clear_note_highlights(self):
+        '''
+        Called when play is manually stopped or has come to an end.
+        '''
+        # Calls the clearDisplay function in playback_view.html
+        self.web_view.page().runJavaScript("clearNoteHighlights();")
 
 
     @Slot()

@@ -1,5 +1,5 @@
 #Default play time for the note
-T_NOTE = 500
+T_NOTE = 200
 
 #This is the scale that will be played
 C_MAJOR = [

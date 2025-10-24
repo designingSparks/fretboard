@@ -312,7 +312,7 @@ function highlightPosition(scale, positionName) {
     });
 }
 
-/**
+/** TO DELETE
  * Highlights multiple scale positions by fading all notes,
  * then re-coloring only the notes within the specified positions.
  * @param {Scale} scale - The scale object containing the position definitions.
@@ -642,8 +642,8 @@ window.handlePythonBendRequest = function(stringIndex, fret, halftones) {
 };
 
 /**
- * Receives a scale pattern from Python, parses it, and draws it on the fretboard.
- * This function is exposed globally for PySide6's runJavaScript to call.
+ * Receives a scale or lick pattern from Python, parses it, and draws it on the fretboard.
+ * e.g. Cmaj. It prints all notes of the pattern in the inactive state initially.
  * @param {string} jsonData - A JSON string representing the scale pattern.
  */
 window.loadScalePattern = function(jsonData) {
@@ -657,11 +657,17 @@ window.loadScalePattern = function(jsonData) {
 };
 
 /**
- * Highlights a single note on the fretboard when called from Python.
+ * Called from python when a new note is being played.
+ * Highlights a single note on the fretboard when called from Python during playback
  * @param {string} stringName - The name of the string (e.g., 'E', 'A', 'e').
  * @param {number} fret - The fret number of the note to highlight.
  */
 window.highlightNote = function(stringName, fret) {
+    // First, reset all notes on the fretboard to their inactive (faded) state.
+    document.querySelectorAll('.note, .open-string-note').forEach(note => {
+        note.classList.add('faded-note');
+    });
+
     // Create a mapping from string name to its index for quick lookups.
     // This could be a global constant if used frequently.
     const stringNameToIndex = GUITAR_TUNING.reduce((acc, stringInfo, index) => {
@@ -681,9 +687,18 @@ window.highlightNote = function(stringName, fret) {
     const noteElement = document.querySelector(noteSelector);
 
     if (noteElement) {
+        // Now, remove the inactive class from only the current note to highlight it.
         noteElement.classList.remove('faded-note');
     }
 };
+
+window.clearNoteHighlights = function() {
+    document.querySelectorAll('.note, .open-string-note').forEach(note => {
+        note.classList.add('faded-note');
+    });
+}
+
+
 
 // --- Animation Trigger ---
 document.getElementById('bend-note-button').addEventListener('click', () => {
