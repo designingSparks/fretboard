@@ -9,6 +9,24 @@ const GUITAR_TUNING = [
     { name: 'A', openNote: 'A' }, { name: 'E', openNote: 'E' },
 ];
 
+// Hardcoded notes for each string and fret for a standard tuning guitar.
+// This replaces the dynamic findNote() function.
+// Each inner array represents a string from high 'e' to low 'E'.
+const FRETBOARD_NOTES = [
+    // 0: High 'e' string
+    ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E'],
+    // 1: 'B' string
+    ['B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'],
+    // 2: 'G' string
+    ['G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G'],
+    // 3: 'D' string
+    ['D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D'],
+    // 4: 'A' string
+    ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A'],
+    // 5: Low 'E' string
+    ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E']
+];
+
 // Configuration for SVG strings, previously handled in CSS
 const STRING_CONFIG = [
     { width: 2.1, color: '#a9a9a9' }, // High e
@@ -52,7 +70,6 @@ const HIGHLIGHT_COLORS = {
 // --- 2. Fretboard Generation ---
 const fretboardBody = document.getElementById('fretboard-body');
 const fretboardFooter = document.getElementById('fretboard-footer');
-const allNotes = ["E", "F", "F#", "G", "G#", "A", "A#", "B", "C", "C#", "D", "D#"];
 const FRET_WIDTH_BASE = 80; // The width of the first fret in pixels.
 const FRET_WIDTH_MULTIPLIER = 0.97; // Each fret will be 93% of the width of the one before it.
 
@@ -167,12 +184,6 @@ function drawFretMarkers() {
     }
 }
 
-function findNote(startNote, fret) {
-    const startIndex = allNotes.indexOf(startNote);
-    const noteIndex = (startIndex + fret) % 12;
-    return allNotes[noteIndex];
-}
-
 function drawScale(scale) {
     // Clear only the notes, not the entire fretboard structure
     document.querySelectorAll('.note, .open-string-note').forEach(n => n.remove());
@@ -200,7 +211,7 @@ function drawScale(scale) {
 
         // Handle fretted notes
         for (let fret = 1; fret <= NUM_FRETS; fret++) {
-            const noteName = findNote(stringInfo.openNote, fret);
+            const noteName = FRETBOARD_NOTES[stringIndex][fret];
             const scaleNoteInfo = scale.notes[noteName];
             if (scaleNoteInfo) {
                 const cell = document.querySelector(`td.fret[data-string="${stringIndex}"][data-fret="${fret}"]`);
@@ -215,32 +226,43 @@ function drawScale(scale) {
     }
 }
 
-// function highlightPositions(positionsToHighlight) {
-//     const allNoteDivs = document.querySelectorAll('.note, .open-string-note');
-    
-//     const highlightedRanges = pentatonicPositions
-//         .filter(p => positionsToHighlight.includes(p.position))
-//         .map(p => p.frets);
+/**
+ * Draws a specific scale pattern received from an external source (like Python).
+ * This function only draws the notes specified in the pattern.
+ * @param {Array<Object>} pattern - An array of note objects, e.g., [{stringName: 'E', fret: 3, duration: 500}, ...]
+ */
+function drawScalePattern(pattern) {
+    // Clear any existing notes from the fretboard
+    document.querySelectorAll('.note, .open-string-note').forEach(n => n.remove());
 
-//     // If there are no positions to highlight, don't fade anything.
-//     if (highlightedRanges.length === 0) {
-//         return;
-//     }
+    // Create a mapping from string name to its index for quick lookups.
+    const stringNameToIndex = GUITAR_TUNING.reduce((acc, stringInfo, index) => {
+        acc[stringInfo.name] = index;
+        return acc;
+    }, {});
 
-//     allNoteDivs.forEach(noteDiv => {
-//         // Get the fret number from the note's dataset attribute.
-//         // This works for both fretted notes and open-string notes.
-//         const fret = parseInt(noteDiv.dataset.fret);
-        
-//         // Check if the note's fret falls within ANY of the highlighted ranges.
-//         const isInHighlightedRange = highlightedRanges.some(range => fret >= range.min && fret <= range.max);
+    pattern.forEach(noteInfo => {
+        const stringIndex = stringNameToIndex[noteInfo.stringName];
+        const fret = noteInfo.fret;
 
-//         // If it's NOT in a highlighted range, fade it.
-//         if (!isInHighlightedRange) {
-//             noteDiv.classList.add('faded-note');
-//         }
-//     });
-// }
+        if (stringIndex === undefined) {
+            console.warn(`Unknown string name in pattern: ${noteInfo.stringName}`);
+            return;
+        }
+
+        const cell = document.querySelector(`td.fret[data-string="${stringIndex}"][data-fret="${fret}"]`);
+        if (cell) {
+            const noteName = FRETBOARD_NOTES[stringIndex][fret];
+            const noteDiv = document.createElement('div');
+            noteDiv.classList.add('note', 'faded-note'); // Add default and inactive classes
+            noteDiv.textContent = noteName;
+            noteDiv.dataset.fret = fret;
+            noteDiv.dataset.duration = noteInfo.duration; // Store duration for future use
+            cell.appendChild(noteDiv);
+        }
+    });
+}
+
 
 /**
  * Highlights a specific scale position by fading all notes,
@@ -592,20 +614,13 @@ function animateNoteBendWholeTone(stringIndex, fret) {
     tl.to(secondaryBendProxy, { y: sNutY, duration: secondaryAnimationDuration, ease: "power1.in" }, "<" + secondaryAnimationStartTime);
 }
 
-// --- 4. Initial Drawing ---
-// Choose which SCALE to draw
-const scaleToDraw = cMajorPentatonic;
-
-
 // --- Execution ---
 drawFretboard(); // 1. Draw the board structure first
 if (SHOW_DOTS) {
     drawFretMarkers(); // 2. Add the fret marker dots
 }
-drawScale(scaleToDraw); // Then draw the notes on top
+// drawScale(scaleToDraw); // Then draw the notes on top
 drawStringsAsSVG();
-// To highlight multiple positions, pass an array to the new function.
-highlightPositions(scaleToDraw, ['p5a', 'p1a']);
 
 // --- New Wrapper Function for Python Calls ---
 /**
@@ -623,6 +638,50 @@ window.handlePythonBendRequest = function(stringIndex, fret, halftones) {
         animateNoteBendWholeTone(stringIndex, fret);
     } else {
         console.warn(`Unknown bend type requested from Python: ${halftones} halftones.`);
+    }
+};
+
+/**
+ * Receives a scale pattern from Python, parses it, and draws it on the fretboard.
+ * This function is exposed globally for PySide6's runJavaScript to call.
+ * @param {string} jsonData - A JSON string representing the scale pattern.
+ */
+window.loadScalePattern = function(jsonData) {
+    console.log("Received scale pattern from Python.");
+    try {
+        const pattern = JSON.parse(jsonData);
+        drawScalePattern(pattern);
+    } catch (e) {
+        console.error("Failed to parse scale pattern from Python:", e);
+    }
+};
+
+/**
+ * Highlights a single note on the fretboard when called from Python.
+ * @param {string} stringName - The name of the string (e.g., 'E', 'A', 'e').
+ * @param {number} fret - The fret number of the note to highlight.
+ */
+window.highlightNote = function(stringName, fret) {
+    // Create a mapping from string name to its index for quick lookups.
+    // This could be a global constant if used frequently.
+    const stringNameToIndex = GUITAR_TUNING.reduce((acc, stringInfo, index) => {
+        acc[stringInfo.name] = index;
+        return acc;
+    }, {});
+
+    const stringIndex = stringNameToIndex[stringName];
+
+    if (stringIndex === undefined) {
+        console.warn(`highlightNote: Unknown string name '${stringName}'`);
+        return;
+    }
+
+    // Construct a selector to find the note div within the correct table cell
+    const noteSelector = `td.fret[data-string="${stringIndex}"][data-fret="${fret}"] .note`;
+    const noteElement = document.querySelector(noteSelector);
+
+    if (noteElement) {
+        noteElement.classList.remove('faded-note');
     }
 };
 

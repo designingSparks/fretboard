@@ -26,4 +26,3 @@ C_MAJOR = [
     ('e', 3, T_NOTE),
     ('e', 5, T_NOTE)
 ]
-C_MAJOR_NOTES = ['G', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'A']

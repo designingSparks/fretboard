@@ -1,6 +1,7 @@
 # Demo function for using QMediaPlayer to playback some of the notes in ./notes, using the QTimer.
 
 import os
+import json
 from PySide6.QtCore import Slot, QTimer, QUrl
 # from PySide6.QtSoundEffects import QSoundEffect
 from PySide6.QtMultimedia import QSoundEffect
@@ -8,7 +9,7 @@ from PySide6.QtMultimedia import QSoundEffect
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton
 
-from scales import C_MAJOR, C_MAJOR_NOTES
+from scales import C_MAJOR
 
 NOTE_FOLDER = 'clean'
 
@@ -27,7 +28,7 @@ class FretboardPlayer(QWidget):
         
         # --- GUI Setup ---
         self.web_view = QWebEngineView()
-        self.web_view.load(QUrl.fromLocalFile(os.path.abspath("playback_view.html")))
+        self.web_view.load(QUrl.fromLocalFile(os.path.abspath("fretboard.html")))
         
         self.play_button = QPushButton("Play")
         self.stop_button = QPushButton("Stop")
@@ -40,6 +41,7 @@ class FretboardPlayer(QWidget):
         # --- Connections ---
         self.play_button.clicked.connect(self.start_playback)
         self.stop_button.clicked.connect(self.stop_playback)
+        self.web_view.loadFinished.connect(self.on_load_finished)
 
     @Slot()
     def start_playback(self):
@@ -62,7 +64,7 @@ class FretboardPlayer(QWidget):
         for sound in self.sound_list:
             sound.stop()
         # Clear the note display on the web page
-        self.clear_fretboard_highlight()
+        # self.clear_fretboard_highlight()
 
     def play_next_note(self):
         # Stop condition: flag is false or playlist is finished
@@ -74,7 +76,10 @@ class FretboardPlayer(QWidget):
         # 1. Get current note details
         note_id = self.midi[self.play_index]
         duration_ms = self.note_duration[self.play_index]
-        note_name = self.note_names[self.play_index]
+        # note_name = self.note_names[self.play_index]
+        string = self.scale[self.play_index][0]
+        fret = self.scale[self.play_index][1]
+        note_name = f"{string}{fret}" #debug only
         
         print(f"Playing: {note_name} (MIDI: {note_id}) for {duration_ms}ms")
 
@@ -82,7 +87,7 @@ class FretboardPlayer(QWidget):
         self.play_audio()
         
         # 3. Update the web page display
-        self.highlight_fretboard(note_name)
+        self.highlight_note(string, fret)
 
         # 4. Advance the play_index
         self.play_index += 1
@@ -105,16 +110,42 @@ class FretboardPlayer(QWidget):
         
 
 
-
-    def highlight_fretboard(self, note_name):
+    def highlight_note(self, string, fret):
         # This function runs JavaScript on your HTML page.
         # Calls the setPlayingNote function in playback_view.html
-        js_code = f"setPlayingNote('{note_name}');"
+        js_code = f"highlightNote('{string}', {fret});"
         self.web_view.page().runJavaScript(js_code)
 
-    def clear_fretboard_highlight(self):
-        # Calls the clearDisplay function in playback_view.html
-        self.web_view.page().runJavaScript("clearDisplay();")
+    #TO DELETE
+    # def clear_fretboard_highlight(self):
+    #     # Calls the clearDisplay function in playback_view.html
+    #     self.web_view.page().runJavaScript("clearDisplay();")
+
+
+    @Slot()
+    def on_load_finished(self):
+        """
+        Called when the QWebEngineView has finished loading the HTML.
+        This is the perfect time to send initial data to the JavaScript side.
+        """
+        print("Web view finished loading. Sending scale data to fretboard.")
+        self.send_scale_to_fretboard()
+
+
+    def send_scale_to_fretboard(self):
+        """
+        Called automatically once the webview has loaded.
+        Converts the Python scale pattern to a JSON string and sends it to
+        a JavaScript function in the web view.
+        """
+        # Convert the list of tuples into a list of dictionaries for easier JSON conversion.
+        # Using camelCase for keys is a common convention when passing data to JavaScript.
+        scale_data = [
+            {'stringName': s, 'fret': f, 'duration': d} for s, f, d in self.scale
+        ]
+        json_data = json.dumps(scale_data)
+        self.web_view.page().runJavaScript(f"loadScalePattern('{json_data}');")
+
 
     def init_midi(self):
         """
@@ -128,7 +159,7 @@ class FretboardPlayer(QWidget):
 
         self.midi = []
         self.note_duration = []
-        self.note_names = []
+        self.note_names = [] #for debugging only
 
 
         for string_name, fret, duration in self.scale:
@@ -136,7 +167,7 @@ class FretboardPlayer(QWidget):
                 midi_note = open_string_midi[string_name] + fret
                 self.midi.append(midi_note)
                 self.note_duration.append(duration)
-                self.note_names.append(string_name+str(fret))
+                self.note_names.append(string_name+str(fret)) #why do we need this??
             else:
                 print(f"Warning: Unknown string name '{string_name}' in scale. Skipping.")
         print(f"Initialized MIDI notes: {self.midi}")
@@ -161,6 +192,8 @@ class FretboardPlayer(QWidget):
 # --- To run the application (example) ---
 if __name__ == "__main__":
     import sys
+    os.environ["QTWEBENGINE_REMOTE_DEBUGGING"] = "8080"
+
     app = QApplication(sys.argv)
 
     window = FretboardPlayer()
