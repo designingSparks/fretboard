@@ -692,6 +692,9 @@ window.highlightNote = function(stringName, fret) {
     }
 };
 
+/**
+ * Called from Python when playback is stopped. 
+ */
 window.clearNoteHighlights = function() {
     document.querySelectorAll('.note, .open-string-note').forEach(note => {
         note.classList.add('faded-note');
