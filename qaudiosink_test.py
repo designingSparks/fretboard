@@ -4,11 +4,14 @@ import sys
 import os
 import io
 from scipy.io import wavfile
+import numpy as np
 import librosa  # Using librosa as requested
 from PySide6.QtWidgets import *
 from PySide6.QtCore import *
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
+LOAD_FORMAT = '.npy' #'.npy or .wav'
+SAMPLERATE = 44100
 
 class AudioSequencePlayer(QWidget):
     """
@@ -47,7 +50,7 @@ class AudioSequencePlayer(QWidget):
         base_dir = "clean"
         print("Preloading media...")
         for i in range(40, 51):  # 40 to 50 inclusive
-            file_name = f"clean_{i}.wav"
+            file_name = f"clean_{i}" + LOAD_FORMAT
             abs_path = os.path.abspath(os.path.join(base_dir, file_name))
             if not os.path.exists(abs_path):
                 print(f"Warning: File not found, skipping: {abs_path}")
@@ -55,9 +58,19 @@ class AudioSequencePlayer(QWidget):
 
             try:
                 # Using librosa as requested
-                data, sample_rate = librosa.load(abs_path, sr=None)
-                byte_io = io.BytesIO()
-                wavfile.write(byte_io, sample_rate, data)
+                # data, sample_rate = librosa.load(abs_path, sr=None)
+
+                if LOAD_FORMAT == '.wav':
+                    samplerate, data = wavfile.read(abs_path)
+                    byte_io = io.BytesIO()
+                    wavfile.write(byte_io, samplerate, data)
+                elif LOAD_FORMAT == '.npy':
+                    data = np.load(abs_path)
+                    # The .npy file is just raw audio data. We need to wrap it in a
+                    # WAV format in-memory so QMediaPlayer can understand it.
+                    byte_io = io.BytesIO()
+                    wavfile.write(byte_io, SAMPLERATE, data)
+
                 self.audio_data_list.append(byte_io.getvalue())
                 self.file_names.append(file_name)
             except Exception as e:
