@@ -1,3 +1,6 @@
+#Shifts the pitch of the BASE_MIDI_NOTE to create the missing MIDI notes
+#This is becuase the Kontakt instrument can't generate up to note 88.
+
 import librosa
 import soundfile as sf
 import os
@@ -5,7 +8,7 @@ import os
 # --- Configuration ---
 # The name of your source audio file (the highest note you can record)
 base_note_file = 'note_79.wav' 
-base_midi_note = 79 # G5 is MIDI note 79
+BASE_MIDI_NOTE = 79 # G5 is MIDI note 79
 
 # Create a directory to store the new notes
 output_dir = 'shifted_notes'
@@ -27,7 +30,7 @@ print("Starting pitch shifting process...")
 for semitones_to_shift in range(1, 10):
     
     # Calculate the new MIDI note number
-    new_midi_note = base_midi_note + semitones_to_shift
+    new_midi_note = BASE_MIDI_NOTE + semitones_to_shift
     note_name = f"note_{new_midi_note}"
     
     print(f"  -> Shifting by {semitones_to_shift} semitones to create MIDI note {new_midi_note}...")
