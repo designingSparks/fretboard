@@ -21,7 +21,14 @@ class TriadPlayer(QWidget):
         self.setWindowTitle("Triad Player")
 
         self.c_triad_notes = [60, 64, 67] # C, E, G
+        # self.c_triad_first_inversion = [54, 57, 60] # E, G, C 
+        # self.c_triad_second_inversion = [57, 60, 64] # G, C, E
         self.g_triad_notes = [67, 71, 74] # G, B, D (octave higher G)
+
+        self.c_triad_first_inversion = [64, 67, 72] # E4, G4, C5
+        self.c_triad_second_inversion = [55, 60, 64] # G3, C4, E4
+        # self.g_triad_notes = [55, 59, 62] # G, B, D
+
 
         # We will store the raw numpy arrays, not the WAV bytes.
         self.audio_data = {}
@@ -38,10 +45,10 @@ class TriadPlayer(QWidget):
     def preload_audio_files(self):
         """Loads necessary .wav files into memory as byte arrays."""
         print("Preloading audio files...")
-        all_notes_needed = sorted(list(set(self.c_triad_notes + self.g_triad_notes)))
+        all_notes_needed = sorted(list(set(self.c_triad_notes + self.c_triad_first_inversion + self.c_triad_second_inversion + self.g_triad_notes)))
 
         for note_id in all_notes_needed:
-            filename = f"clean_{note_id}.wav"
+            filename = f"clean_{note_id}.npy" # Load .npy file directly
             filepath = os.path.join(CLEAN_DIR, filename)
 
             if not os.path.exists(filepath):
@@ -49,10 +56,7 @@ class TriadPlayer(QWidget):
                 continue
 
             try:
-                samplerate, data = wavfile.read(filepath)
-                if samplerate != SAMPLERATE:
-                    print(f"Warning: Samplerate mismatch for {filename}. Expected {SAMPLERATE}, got {samplerate}.")
-
+                data = np.load(filepath) # Load numpy array
                 self.audio_data[note_id] = data
 
             except Exception as e:
@@ -65,15 +69,21 @@ class TriadPlayer(QWidget):
         layout = QVBoxLayout(self)
         self.status_label = QLabel("Ready to play triads.")
         self.play_c_button = QPushButton("Play C Triad (C-E-G)")
+        self.play_c_first_inv_button = QPushButton("Play C Triad 1st Inversion (E-G-C)")
+        self.play_c_second_inv_button = QPushButton("Play C Triad 2nd Inversion (G-C-E)")
         self.play_g_button = QPushButton("Play G Triad (G-B-D)")
         self.stop_button = QPushButton("Stop")
 
         layout.addWidget(self.status_label)
         layout.addWidget(self.play_c_button)
+        layout.addWidget(self.play_c_first_inv_button)
+        layout.addWidget(self.play_c_second_inv_button)
         layout.addWidget(self.play_g_button)
         layout.addWidget(self.stop_button)
 
         self.play_c_button.clicked.connect(self.play_c_triad)
+        self.play_c_first_inv_button.clicked.connect(self.play_c_first_inversion_triad)
+        self.play_c_second_inv_button.clicked.connect(self.play_c_second_inversion_triad)
         self.play_g_button.clicked.connect(self.play_g_triad)
         self.stop_button.clicked.connect(self.stop_playback)
 
@@ -82,6 +92,8 @@ class TriadPlayer(QWidget):
             self.stop_button.setEnabled(False)
             self.status_label.setText("Error: No audio files were loaded. Buttons disabled.")
             self.play_c_button.setEnabled(False)
+            self.play_c_first_inv_button.setEnabled(False)
+            self.play_c_second_inv_button.setEnabled(False)
             self.play_g_button.setEnabled(False)
 
     def play_triad(self, notes_to_play):
@@ -115,6 +127,7 @@ class TriadPlayer(QWidget):
 
         # 4. Mix the arrays by summing them up (astype float to prevent overflow)
         mixed_arr = np.sum([arr.astype(np.float32) for arr in padded_arrays], axis=0)
+        
         # 5. Normalize the mixed audio to prevent clipping
         max_amp = np.max(np.abs(mixed_arr))
         if max_amp > 0:
@@ -147,6 +160,16 @@ class TriadPlayer(QWidget):
     def play_c_triad(self):
         """Slot to play the C major triad."""
         self.play_triad(self.c_triad_notes)
+
+    @Slot()
+    def play_c_first_inversion_triad(self):
+        """Slot to play the C major triad first inversion."""
+        self.play_triad(self.c_triad_first_inversion)
+
+    @Slot()
+    def play_c_second_inversion_triad(self):
+        """Slot to play the C major triad second inversion."""
+        self.play_triad(self.c_triad_second_inversion)
 
     @Slot()
     def play_g_triad(self):
