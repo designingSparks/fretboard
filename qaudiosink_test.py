@@ -1,3 +1,5 @@
+#This works well. It loads the .wav files into RAM to avoid IO latency. 
+#With this approach, you can also preprocess bends etc.
 import sys
 import os
 import io
@@ -71,7 +73,7 @@ class AudioSequencePlayer(QWidget):
 
         # --- The Robust Hot-Swap Pattern ---
         self.player.stop()
-        self._audio_output = QAudioOutput()
+        self._audio_output = QAudioOutput() #You need to do this for each new sound
         self.player.setAudioOutput(self._audio_output)
         self.player.setSourceDevice(None)
         self.current_buffer = QBuffer()
