@@ -1,5 +1,3 @@
-# Demo function for using QMediaPlayer to playback some of the notes in ./notes, using the QTimer.
-
 import os
 import json
 from PySide6.QtCore import *
@@ -25,10 +23,10 @@ class FretboardPlayer(QWidget):
         self.notes_to_highlight = C_MAJOR_TRIAD_HIGHLIGHT #TODO: Allow scale to be selectable in the GUI
         self.play_seq = C_MAJOR_TRIAD_SEQ
 
-        self.midi = None
+        self.midi = None #e.g. self.midi = [[64, 60, 55], [67, 64, 60], [72, 67, 64], [76, 72, 67]]
         self.note_duration = None
         self.sound_list = None
-        self.init_midi() #e.g. self.midi = [[64, 60, 55], [67, 64, 60], [72, 67, 64], [76, 72, 67]]
+        self.init_midi() 
         self.create_sound_list()
 
         self.play_index = 0
@@ -75,7 +73,7 @@ class FretboardPlayer(QWidget):
         self.is_playing = False
         # Stop any sound that might be playing from the list
         for sound in self.sound_list:
-            sound.stop()
+            sound.stop() #TODO: Can't stop a numpy sound
         # Clear any note highlights
         # self.clear_note_highlights() #TODO
 

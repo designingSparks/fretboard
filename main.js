@@ -250,15 +250,32 @@ function drawScalePattern(pattern) {
             return;
         }
 
-        const cell = document.querySelector(`td.fret[data-string="${stringIndex}"][data-fret="${fret}"]`);
-        if (cell) {
-            const noteName = FRETBOARD_NOTES[stringIndex][fret];
-            const noteDiv = document.createElement('div');
-            noteDiv.classList.add('note', 'faded-note'); // Add default and inactive classes
-            noteDiv.textContent = noteName;
-            noteDiv.dataset.fret = fret;
-            noteDiv.dataset.duration = noteInfo.duration; // Store duration for future use
-            cell.appendChild(noteDiv);
+        if (fret === 0) {
+            // Handle open string notes (fret 0)
+            const labelCell = document.querySelector(`td.string-label[data-string="${stringIndex}"]`);
+            if (labelCell) {
+                const stringName = GUITAR_TUNING[stringIndex].name;
+                // Clear the plain text string name before adding the styled note div
+                labelCell.textContent = '';
+                const noteDiv = document.createElement('div');
+                noteDiv.classList.add('open-string-note', 'faded-note');
+                noteDiv.textContent = stringName;
+                noteDiv.dataset.fret = 0;
+                noteDiv.dataset.duration = noteInfo.duration;
+                labelCell.appendChild(noteDiv);
+            }
+        } else {
+            // Handle fretted notes (fret > 0)
+            const cell = document.querySelector(`td.fret[data-string="${stringIndex}"][data-fret="${fret}"]`);
+            if (cell) {
+                const noteName = FRETBOARD_NOTES[stringIndex][fret];
+                const noteDiv = document.createElement('div');
+                noteDiv.classList.add('note', 'faded-note'); // Add default and inactive classes
+                noteDiv.textContent = noteName;
+                noteDiv.dataset.fret = fret;
+                noteDiv.dataset.duration = noteInfo.duration; // Store duration for future use
+                cell.appendChild(noteDiv);
+            }
         }
     });
 }
