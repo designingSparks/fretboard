@@ -1,3 +1,4 @@
+# Demo of how to play multiple notes at onces by simply adding the arrays into a new array.
 # There are .wav files in the ./clean directory. They are labelled clean_n.wav, where n is the midi note.Warning
 # I want to play MIDI notes 60	64	67 simultaneously for 1 sec to form a C triad.
 # Create a PySide6 GUI to play a C and G triad. There should be two buttons, Play C, Play G

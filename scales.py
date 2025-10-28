@@ -11,13 +11,8 @@ C_MAJOR_POS4_HIGHLIGHT = [
     ('E', 3), ('E', 5), # Low E string
 ]
 
-
+#This is just C to C
 C_MAJOR_POS4_PLAY = [
-    # Low E string
-    # ('E', 3, T_NOTE),
-    # ('E', 5, T_NOTE),
-    # A string
-    # ('A', 2, T_NOTE),
     ('A', 3, T_NOTE),
     ('A', 5, T_NOTE),
     # D string
@@ -28,13 +23,6 @@ C_MAJOR_POS4_PLAY = [
     ('G', 2, T_NOTE),
     ('G', 4, T_NOTE),
     ('G', 5, T_NOTE),
-    # B string
-    # ('B', 3, T_NOTE),
-    # ('B', 5, T_NOTE),
-    # ('B', 6, T_NOTE),
-    # High e string
-    # ('e', 3, T_NOTE),
-    # ('e', 5, T_NOTE)
 ]
 
 
