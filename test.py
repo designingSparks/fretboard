@@ -26,7 +26,7 @@ class MainWindow(QWidget):
         
         # Construct the path to index.html relative to the script's location
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        html_path = os.path.join(current_dir, 'index.html')
+        html_path = os.path.join(current_dir, 'fretboard.html')
         self.webview.setUrl(QUrl.fromLocalFile(html_path))
 
         # You can also connect to the loadFinished signal to know when the page is ready

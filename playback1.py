@@ -3,13 +3,11 @@
 import os
 import json
 from PySide6.QtCore import Slot, QTimer, QUrl
-# from PySide6.QtSoundEffects import QSoundEffect
 from PySide6.QtMultimedia import QSoundEffect
-
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton
-
-from scales import C_MAJOR
+from scales import C_MAJOR_POS4_HIGHLIGHT #This will be highlighted in grey by default
+from scales import C_MAJOR_POS4_PLAY #These are the notes that are played
 
 NOTE_FOLDER = 'clean'
 
@@ -18,7 +16,9 @@ class FretboardPlayer(QWidget):
         super().__init__()
         
         self.audio_folder = NOTE_FOLDER
-        self.scale = C_MAJOR #TODO: Allow scale to be selectable in the GUI
+        self.scale_highlight = C_MAJOR_POS4_HIGHLIGHT #TODO: Allow scale to be selectable in the GUI
+        self.scale_play = C_MAJOR_POS4_PLAY
+
         self.init_midi()
         self.init_sound()
 
@@ -77,8 +77,8 @@ class FretboardPlayer(QWidget):
         note_id = self.midi[self.play_index]
         duration_ms = self.note_duration[self.play_index]
         # note_name = self.note_names[self.play_index]
-        string = self.scale[self.play_index][0]
-        fret = self.scale[self.play_index][1]
+        string = self.scale_play[self.play_index][0]
+        fret = self.scale_play[self.play_index][1]
         note_name = f"{string}{fret}" #debug only
         
         print(f"Playing: {note_name} (MIDI: {note_id}) for {duration_ms}ms")
@@ -138,14 +138,15 @@ class FretboardPlayer(QWidget):
 
     def send_scale_to_fretboard(self):
         """
-        Called automatically once the webview has loaded.
+        Highlights the potential notes in grey. Called automatically once the webview has loaded.
+        Note all these notes are necessarily played
         Converts the Python scale pattern to a JSON string and sends it to
         a JavaScript function in the web view.
         """
         # Convert the list of tuples into a list of dictionaries for easier JSON conversion.
         # Using camelCase for keys is a common convention when passing data to JavaScript.
         scale_data = [
-            {'stringName': s, 'fret': f, 'duration': d} for s, f, d in self.scale
+            {'stringName': s, 'fret': f} for s, f in self.scale_highlight
         ]
         json_data = json.dumps(scale_data)
         self.web_view.page().runJavaScript(f"loadScalePattern('{json_data}');")
@@ -153,7 +154,7 @@ class FretboardPlayer(QWidget):
 
     def init_midi(self):
         """
-        Initializes self.midi and self.note_duration lists from self.scale.
+        Initializes self.midi and self.note_duration lists from self.scale_play.
         Converts (string, fret) tuples into MIDI note numbers.
         """
         # MIDI note numbers for open strings from low E to high e
@@ -166,7 +167,7 @@ class FretboardPlayer(QWidget):
         self.note_names = [] #for debugging only
 
 
-        for string_name, fret, duration in self.scale:
+        for string_name, fret, duration in self.scale_play:
             if string_name in open_string_midi:
                 midi_note = open_string_midi[string_name] + fret
                 self.midi.append(midi_note)
@@ -197,10 +198,7 @@ class FretboardPlayer(QWidget):
 if __name__ == "__main__":
     import sys
     os.environ["QTWEBENGINE_REMOTE_DEBUGGING"] = "8080"
-
     app = QApplication(sys.argv)
-
     window = FretboardPlayer()
-
     window.show()
     sys.exit(app.exec())
