@@ -2,10 +2,10 @@
 
 import os
 import json
-from PySide6.QtCore import Slot, QTimer, QUrl
-from PySide6.QtMultimedia import QSoundEffect
+from PySide6.QtCore import *
 from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton
+from PySide6.QtWidgets import *
+from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from triads import C_MAJOR_TRIAD_HIGHLIGHT #This will be highlighted in grey by default
 from triads import C_MAJOR_TRIAD_SEQ #These are the notes that are played
 from scipy.io import wavfile
@@ -34,8 +34,6 @@ class FretboardPlayer(QWidget):
         self.play_index = 0
         self.is_playing = False
 
-        
-        # --- GUI Setup ---
         self.web_view = QWebEngineView()
         self.web_view.load(QUrl.fromLocalFile(os.path.abspath("fretboard.html")))
         
@@ -52,6 +50,11 @@ class FretboardPlayer(QWidget):
         self.stop_button.clicked.connect(self.stop_playback)
         self.web_view.loadFinished.connect(self.on_load_finished)
 
+        self.player = QMediaPlayer()
+        self._audio_output = None
+        self.current_buffer = None
+
+
     @Slot()
     def start_playback(self):
         if self.is_playing:
@@ -63,6 +66,7 @@ class FretboardPlayer(QWidget):
         self.play_next_note() # Start the chain
 
     @Slot()
+    #TODO
     def stop_playback(self):
         if not self.is_playing:
             return
@@ -73,7 +77,7 @@ class FretboardPlayer(QWidget):
         for sound in self.sound_list:
             sound.stop()
         # Clear any note highlights
-        self.clear_note_highlights()
+        # self.clear_note_highlights() #TODO
 
     def play_next_note(self):
         # Stop condition: flag is false or playlist is finished
@@ -82,33 +86,49 @@ class FretboardPlayer(QWidget):
             print("Playback finished.")
             return
 
-        # 1. Get current note details
-        note_id = self.midi[self.play_index]
         duration_ms = self.note_duration[self.play_index]
-        # note_name = self.note_names[self.play_index]
-        string = self.play_seq[self.play_index][0]
-        fret = self.play_seq[self.play_index][1]
-        note_name = f"{string}{fret}" #debug only
-        
-        print(f"Playing: {note_name} (MIDI: {note_id}) for {duration_ms}ms")
 
-        # 2. Play the sound
-        self.play_audio()
+        # # 1. Get current note details
+        # note_id = self.midi[self.play_index]
+        # duration_ms = self.note_duration[self.play_index]
+        # # note_name = self.note_names[self.play_index]
+        # string = self.play_seq[self.play_index][0]
+        # fret = self.play_seq[self.play_index][1]
+        # note_name = f"{string}{fret}" #debug only
         
-        # 3. Update the web page display
-        self.highlight_note(string, fret)
+        # print(f"Playing: {note_name} (MIDI: {note_id}) for {duration_ms}ms")
+        data = self.sound_list[self.play_index]
+        self.play_sound(data)
+        
+        # TODO
+        # self.highlight_note(string, fret)
 
-        # 4. Advance the play_index
         self.play_index += 1
-        
-        # 5. Schedule the *next* call
         QTimer.singleShot(duration_ms, self.play_next_note)
 
-    def play_audio(self):
+
+    def play_sound(self, data):
         """Plays the sound effect corresponding to the current playback play_index."""
-        if 0 <= self.play_index < len(self.sound_list):
-            sound_to_play = self.sound_list[self.play_index]
-            sound_to_play.play()
+        # if 0 <= self.play_index < len(self.sound_list):
+        #     sound_to_play = self.sound_list[self.play_index]
+        #     sound_to_play.play()
+
+        byte_io = io.BytesIO()
+        wavfile.write(byte_io, SAMPLERATE, data)
+        data_bytes = byte_io.getvalue()
+
+        # 7. Play the single mixed buffer using the robust pattern
+        self.player.stop()
+        self._audio_output = QAudioOutput()
+        self.player.setAudioOutput(self._audio_output)
+        self.player.setSourceDevice(None)
+        self.current_buffer = QBuffer()
+        self.current_buffer.setData(data_bytes)
+        self.current_buffer.open(QIODevice.OpenModeFlag.ReadOnly)
+        self.player.setSourceDevice(self.current_buffer)
+        self.player.play()
+
+        self.stop_button.setEnabled(True)
 
 
     def init_fretboard(self):
@@ -210,7 +230,7 @@ class FretboardPlayer(QWidget):
                 note_data_list.append(data)
             note_mix = self._mix_notes(note_data_list)
             self.sound_list.append(note_mix)
-    
+        print("Sound list created.")
 
     def _load_audio_file(self, midi_note):
         """Loads the target .wav file into an in-memory bytes object."""
@@ -223,6 +243,8 @@ class FretboardPlayer(QWidget):
         return data
 
     
+    
+    
     def _mix_notes(self, sound_data_list):
         """
         Pre-mixes a triad into a single numpy array and stores it.
@@ -232,9 +254,9 @@ class FretboardPlayer(QWidget):
         # Create strumming effect
         delay_samples = int(SAMPLERATE * STRUM_DELAY_MS / 1000)
         strummed_arrays = []
-        for data in sound_data_list):
-            initial_padding = np.zeros(data * delay_samples, dtype=arr.dtype)
-            strummed_arr = np.concatenate((initial_padding, arr))
+        for i, data in enumerate(sound_data_list):
+            initial_padding = np.zeros(i * delay_samples, dtype=data.dtype)
+            strummed_arr = np.concatenate((initial_padding, data))
             strummed_arrays.append(strummed_arr)
 
         max_len = max(len(arr) for arr in strummed_arrays)
