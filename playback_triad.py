@@ -15,7 +15,7 @@ from constants import FRETBOARD_NOTES_NAME, STRING_ID
 NOTE_FOLDER = 'clean'
 SAMPLERATE = 44100
 STRUM_DELAY_MS = 10
-HIGHLIGHTS = {'C':'highlight1', 'E':'highlight2', 'G':'highlight3'}
+HIGHLIGHTS = {'C':'highlight3'} #, 'E':'highlight2', 'G':'highlight3'
 
 class FretboardPlayer(QWidget):
     def __init__(self):
