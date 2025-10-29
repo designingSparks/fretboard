@@ -90,18 +90,50 @@
             border-left: 8px solid #333; 
         }
 
+        /* Default highlight, no highlight1,2,3 added */
         .note, .open-string-note {
             background-color: #444; /* Default dark grey for all scale notes */
         }
         
-        .note.root, .open-string-note.root { background-color: #e74c3c; } /* Red */
-        .note.third, .open-string-note.third { background-color: #ff8c00; } /* Orange */
-        .note.fifth, .open-string-note.fifth { background-color: #ffd700; } /* Yellow */
-        
-        /* 2. Define the override style for inactive notes, notes which are not being played.
-           Because this rule comes LAST, it will take precedence. */
+        /* Default highlight, no highlight1,2,3 added 
+           Because this rule comes LAST, it will take precedence. 
+        */
         .note.inactive, .open-string-note.inactive {
             background-color: #9d9d9d; /* Inactive note colour */
+        }
+
+        /* Highlight Group 1 (e.g., Root) */
+        .note.highlight1, 
+        .open-string-note.highlight1 {
+            background-color: #e74c3c; /* Active (Red) */
+            color: #fff;
+        }
+        .note.highlight1.inactive, 
+        .open-string-note.highlight1.inactive {
+            background-color: #f5b7b1; /* Inactive (Faded Red) */
+            color: #fff;
+        }
+        /* Highlight Group 2 (e.g., Third) */
+        .note.highlight2, 
+        .open-string-note.highlight2 {
+            background-color: #ff8c00; /* Active (Orange) */
+            color: #000; /* Text color for better contrast */
+        }
+        .note.highlight2.inactive, 
+        .open-string-note.highlight2.inactive {
+            background-color: #fAD7A0; /* Inactive (Faded Orange) */
+            color: #000;
+        }
+        /* Highlight Group 3 (e.g., Fifth) */
+        .note.highlight3, 
+        .open-string-note.highlight3 {
+            background-color: #ffd700; /* Active (Yellow) */
+            color: #000; /* Text color for better contrast */
+        }
+        .note.highlight3.inactive, 
+        .open-string-note.highlight3.inactive {
+            background-color: #f9E79F; /* Inactive (Faded Yellow) */
+            color: #000;
         }
 
         /* New class for the fret highlight */
