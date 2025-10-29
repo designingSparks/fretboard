@@ -1,8 +1,8 @@
 import { cMajorPentatonic, gMajorPentatonic, aMinorPentatonic, cMajor } from './scales.js';
 
 // --- 1. Configuration ---
-const SHOW_DOTS = false; // Set to false to hide fret markers
-const NUM_FRETS = 18;
+const SHOW_DOTS = true; // Set to false to hide fret markers
+const NUM_FRETS = 24;
 const GUITAR_TUNING = [
     { name: 'e', openNote: 'E' }, { name: 'B', openNote: 'B' },
     { name: 'G', openNote: 'G' }, { name: 'D', openNote: 'D' },
@@ -138,8 +138,8 @@ function drawFretboard() {
  * Draws the fret marker dots (inlays) on the fretboard.
  */
 function drawFretMarkers() {
-    const singleDotFrets = [3, 5, 7, 9];
-    const doubleDotFrets = [12];
+    const singleDotFrets = [3, 5, 7, 9, 15, 17, 19, 21];
+    const doubleDotFrets = [12, 24];
 
     for (let fret = 1; fret <= NUM_FRETS; fret++) {
         const fretInPattern = ((fret - 1) % 12) + 1;

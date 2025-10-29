@@ -34,6 +34,7 @@ class FretboardPlayer(QWidget):
 
         self.web_view = QWebEngineView()
         self.web_view.load(QUrl.fromLocalFile(os.path.abspath("fretboard.html")))
+        self.web_view.setZoomFactor(0.9) # Set zoom factor
         
         self.play_button = QPushButton("Play")
         self.stop_button = QPushButton("Stop")

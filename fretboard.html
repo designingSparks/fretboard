@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     <title>Dynamic Fretboard Diagram</title>
     <!-- 1. Include the GSAP library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -15,8 +15,8 @@
             padding: 20px;
         }
         .fretboard-diagram {
-            font-family: 'Roboto', sans-serif;
-            font-size: 16px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 14px;
             line-height: 1.2;
             display: inline-block;
         }
@@ -46,8 +46,9 @@
              /* background: linear-gradient(to right, #9d654b, #8c5a41 50%, #9d654b); better */
              /* Using rgba to add an alpha channel, making the wood texture lighter */
              /* Light fretboard */
-             background: linear-gradient(to right, rgba(209, 161, 99, 0.5), rgba(185, 134, 66, 0.5) 50%, rgba(209, 161, 99, 0.5));
-        
+             /* Old brown background */
+             /* background: linear-gradient(to right, rgba(209, 161, 99, 0.5), rgba(185, 134, 66, 0.5) 50%, rgba(209, 161, 99, 0.5)); */
+             background-color: #fff;
         }
         .string-label {
             background-color: #fff;
@@ -75,7 +76,7 @@
         }
         .fret {
             /* border-right width sets fret width */
-            border-right: 3px solid #525151;
+            border-right: 1px solid #525151;
             position: relative; 
         }
         tbody tr:first-child .fret {
@@ -100,7 +101,7 @@
         /* 2. Define the override style for faded notes.
            Because this rule comes LAST, it will take precedence. */
         .note.faded-note, .open-string-note.faded-note {
-            background-color: #dddddd; /* Medium grey */
+            background-color: #9d9d9d; /* Inactive note colour */
         }
 
         /* New class for the fret highlight */
@@ -113,8 +114,9 @@
             position: absolute;
             width: 18px;
             height: 18px;
-            background-color: #fcfbeb; /*cream*/
+            /*background-color: #fcfbeb; /*cream*/
             /* background-color: #fff; White dots */
+            background-color: #e3e3e3; /* lightgrey */
             border-radius: 50%;
             /* Center the dot horizontally within the fret cell */
             left: 50%;
@@ -134,9 +136,6 @@
     <!-- SVG container for strings. It will be populated by main.js -->
     <svg id="string-svg-container"></svg>
 </div>
-<br>
-<!-- 2. Add a button to trigger the animation -->
-<button id="bend-note-button" style="margin-top: 20px; padding: 10px 15px; font-family: 'Roboto', sans-serif;">Bend Note</button>
 
 <script src="main.js" type="module"></script>
 
