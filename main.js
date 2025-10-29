@@ -258,7 +258,10 @@ function drawScalePattern(pattern) {
                 // Clear the plain text string name before adding the styled note div
                 labelCell.textContent = '';
                 const noteDiv = document.createElement('div');
-                noteDiv.classList.add('open-string-note', 'inactive');
+                noteDiv.classList.add('open-string-note', 'inactive'); // Add default and inactive classes
+                if (noteInfo.highlight) { // If highlight is not null or undefined
+                    noteDiv.classList.add(noteInfo.highlight);
+                }
                 noteDiv.textContent = stringName;
                 noteDiv.dataset.fret = 0;
                 noteDiv.dataset.duration = noteInfo.duration;
@@ -271,6 +274,9 @@ function drawScalePattern(pattern) {
                 const noteName = FRETBOARD_NOTES[stringIndex][fret];
                 const noteDiv = document.createElement('div');
                 noteDiv.classList.add('note', 'inactive'); // Add default and inactive classes
+                if (noteInfo.highlight) { // If highlight is not null or undefined
+                    noteDiv.classList.add(noteInfo.highlight);
+                }
                 noteDiv.textContent = noteName;
                 noteDiv.dataset.fret = fret;
                 noteDiv.dataset.duration = noteInfo.duration; // Store duration for future use
@@ -663,7 +669,7 @@ window.handlePythonBendRequest = function(stringIndex, fret, halftones) {
  * e.g. Cmaj. It prints all notes of the pattern in the inactive state initially.
  * @param {string} jsonData - A JSON string representing the scale pattern.
  */
-window.loadScalePattern = function(jsonData) {
+window.displayNotes = function(jsonData) {
     console.log("Received scale pattern from Python.");
     try {
         const pattern = JSON.parse(jsonData);

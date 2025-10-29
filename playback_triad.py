@@ -9,12 +9,13 @@ import io
 import numpy as np
 from triads import C_MAJOR_TRIAD_HIGHLIGHT #This will be highlighted in grey by default
 from triads import C_MAJOR_TRIAD_SEQ #These are the notes that are played
-from constants import FRETBOARD_NOTES_NAME
+from constants import FRETBOARD_NOTES_NAME, STRING_ID
 
 
 NOTE_FOLDER = 'clean'
 SAMPLERATE = 44100
 STRUM_DELAY_MS = 10
+HIGHLIGHTS = {'C':'highlight1', 'E':'highlight2', 'G':'highlight3'}
 
 class FretboardPlayer(QWidget):
     def __init__(self):
@@ -167,23 +168,32 @@ class FretboardPlayer(QWidget):
         This is the perfect time to send initial data to the JavaScript side.
         """
         print("Web view finished loading. Sending scale data to fretboard.")
-        self.send_scale_to_fretboard()
+        self.send_notes_to_fretboard()
 
 
-    def send_scale_to_fretboard(self):
+    def send_notes_to_fretboard(self):
         """
-        Highlights the potential notes in grey. Called automatically once the webview has loaded.
-        Note all these notes are necessarily played
-        Converts the Python scale pattern to a JSON string and sends it to
-        a JavaScript function in the web view.
+        Called automatically once the webview has loaded.
+        Basically preloads the notes, which are then displayed in an inactive CSS class.
+        The notes also belong to either the default, highlight1,2,3 CSS classes.
+        Not all notes send must be played. But a note must 
+        Converts the Python scale pattern to a JSON string and sends it to a JavaScript function in the web view.
         """
         # Convert the list of tuples into a list of dictionaries for easier JSON conversion.
         # Using camelCase for keys is a common convention when passing data to JavaScript.
-        scale_data = [
-            {'stringName': s, 'fret': f} for s, f in self.notes_to_highlight
-        ]
+        # scale_data = [
+        #     {'stringName': s, 'fret': f} for s, f in self.notes_to_highlight
+        # ]
+        scale_data = []
+        for s, f in self.notes_to_highlight:
+            string_num = STRING_ID.index(s)
+            note_name = FRETBOARD_NOTES_NAME[string_num][f]
+            # Use .get() to safely get the highlight class.
+            # If note_name is not in HIGHLIGHTS, it will return None.
+            highlight_class = HIGHLIGHTS.get(note_name)
+            scale_data.append({'stringName': s, 'fret': f, 'highlight': highlight_class})
         json_data = json.dumps(scale_data)
-        self.web_view.page().runJavaScript(f"loadScalePattern('{json_data}');")
+        self.web_view.page().runJavaScript(f"displayNotes('{json_data}');")
 
 
     def init_midi(self):
