@@ -201,7 +201,7 @@ function drawScale(scale) {
             labelCell.textContent = '';
             const noteDiv = document.createElement('div');
             // Add the note's identity AND the default faded class
-            noteDiv.classList.add('open-string-note', openNoteInfo.degree, 'faded-note');
+            noteDiv.classList.add('open-string-note', openNoteInfo.degree, 'inactive');
             noteDiv.textContent = stringInfo.name;
             noteDiv.dataset.fret = 0;
             labelCell.appendChild(noteDiv);
@@ -217,7 +217,7 @@ function drawScale(scale) {
                 const cell = document.querySelector(`td.fret[data-string="${stringIndex}"][data-fret="${fret}"]`);
                 const noteDiv = document.createElement('div');
                  // Add the note's identity AND the default faded class
-                noteDiv.classList.add('note', scaleNoteInfo.degree, 'faded-note');
+                noteDiv.classList.add('note', scaleNoteInfo.degree, 'inactive');
                 noteDiv.textContent = noteName;
                 noteDiv.dataset.fret = fret;
                 cell.appendChild(noteDiv);
@@ -258,7 +258,7 @@ function drawScalePattern(pattern) {
                 // Clear the plain text string name before adding the styled note div
                 labelCell.textContent = '';
                 const noteDiv = document.createElement('div');
-                noteDiv.classList.add('open-string-note', 'faded-note');
+                noteDiv.classList.add('open-string-note', 'inactive');
                 noteDiv.textContent = stringName;
                 noteDiv.dataset.fret = 0;
                 noteDiv.dataset.duration = noteInfo.duration;
@@ -270,7 +270,7 @@ function drawScalePattern(pattern) {
             if (cell) {
                 const noteName = FRETBOARD_NOTES[stringIndex][fret];
                 const noteDiv = document.createElement('div');
-                noteDiv.classList.add('note', 'faded-note'); // Add default and inactive classes
+                noteDiv.classList.add('note', 'inactive'); // Add default and inactive classes
                 noteDiv.textContent = noteName;
                 noteDiv.dataset.fret = fret;
                 noteDiv.dataset.duration = noteInfo.duration; // Store duration for future use
@@ -300,7 +300,7 @@ function highlightPosition(scale, positionName) {
 
     allNoteDivs.forEach(noteDiv => {
         // First, ensure every note is faded. This resets the board state.
-        noteDiv.classList.add('faded-note');
+        noteDiv.classList.add('inactive');
 
         // Now, check if this note is in the position to be displayed.
         const noteFret = parseInt(noteDiv.dataset.fret);
@@ -324,7 +324,7 @@ function highlightPosition(scale, positionName) {
         // If it's in the position, simply remove the faded class.
         // The color from the CSS (.root, .third, etc.) will now appear.
         if (isInPosition) {
-            noteDiv.classList.remove('faded-note');
+            noteDiv.classList.remove('inactive');
         }
     });
 }
@@ -350,7 +350,7 @@ function highlightPositions(scale, positionNames) {
 
     allNoteDivs.forEach(noteDiv => {
         // First, ensure every note is faded. This resets the board state.
-        noteDiv.classList.add('faded-note');
+        noteDiv.classList.add('inactive');
 
         const noteFret = parseInt(noteDiv.dataset.fret);
         const noteStringIndex = parseInt(noteDiv.parentElement.dataset.string);
@@ -365,7 +365,7 @@ function highlightPositions(scale, positionNames) {
         });
 
         if (isInAnyPosition) {
-            noteDiv.classList.remove('faded-note');
+            noteDiv.classList.remove('inactive');
         }
     });
 }
@@ -681,7 +681,7 @@ window.highlightNotes = function(jsonData) {
     
     // First, reset all notes on the fretboard to their inactive (faded) state.
     document.querySelectorAll('.note, .open-string-note').forEach(note => {
-        note.classList.add('faded-note');
+        note.classList.add('inactive');
     });
     
     //Cycle through jsonData and call highlight note
@@ -707,7 +707,7 @@ window.highlightNotes = function(jsonData) {
                 }
                 const noteElement = document.querySelector(noteSelector);
                 if (noteElement) {
-                    noteElement.classList.remove('faded-note');
+                    noteElement.classList.remove('inactive');
                 }
             }
         });
@@ -725,7 +725,7 @@ window.highlightNotes = function(jsonData) {
 window.highlightNote = function(stringName, fret) {
     // First, reset all notes on the fretboard to their inactive (faded) state.
     document.querySelectorAll('.note, .open-string-note').forEach(note => {
-        note.classList.add('faded-note');
+        note.classList.add('inactive');
     });
 
     // Create a mapping from string name to its index for quick lookups.
@@ -748,7 +748,7 @@ window.highlightNote = function(stringName, fret) {
 
     if (noteElement) {
         // Now, remove the inactive class from only the current note to highlight it.
-        noteElement.classList.remove('faded-note');
+        noteElement.classList.remove('inactive');
     }
 };
 
@@ -757,7 +757,7 @@ window.highlightNote = function(stringName, fret) {
  */
 window.clearNoteHighlights = function() {
     document.querySelectorAll('.note, .open-string-note').forEach(note => {
-        note.classList.add('faded-note');
+        note.classList.add('inactive');
     });
 }
 
