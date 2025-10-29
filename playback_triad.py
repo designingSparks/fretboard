@@ -4,11 +4,12 @@ from PySide6.QtCore import *
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import *
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
-from triads import C_MAJOR_TRIAD_HIGHLIGHT #This will be highlighted in grey by default
-from triads import C_MAJOR_TRIAD_SEQ #These are the notes that are played
 from scipy.io import wavfile
 import io
 import numpy as np
+from triads import C_MAJOR_TRIAD_HIGHLIGHT #This will be highlighted in grey by default
+from triads import C_MAJOR_TRIAD_SEQ #These are the notes that are played
+from constants import FRETBOARD_NOTES_NAME
 
 
 NOTE_FOLDER = 'clean'
