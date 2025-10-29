@@ -25,7 +25,7 @@ class FretboardPlayer(QWidget):
 
         self.midi = None #e.g. self.midi = [[64, 60, 55], [67, 64, 60], [72, 67, 64], [76, 72, 67]]
         self.note_duration = None
-        self.sound_list = None
+        self.sound_list = None #holds the numpy arrays of the sounds played at each step of the sequence
         self.init_midi() 
         self.create_sound_list()
 
@@ -65,18 +65,17 @@ class FretboardPlayer(QWidget):
         self.play_next_note() # Start the chain
 
     @Slot()
-    #TODO
     def stop_playback(self):
         if not self.is_playing:
             return
             
         print("Stopping playback...")
         self.is_playing = False
-        # Stop any sound that might be playing from the list
-        for sound in self.sound_list:
-            sound.stop() #TODO: Can't stop a numpy sound
+
+        # Stop the QMediaPlayer instance that is playing the sound
+        self.player.stop()
         # Clear any note highlights
-        # self.clear_note_highlights() #TODO
+        self.clear_note_highlights()
 
     def play_next_note(self):
         # Stop condition: flag is false or playlist is finished
@@ -85,22 +84,20 @@ class FretboardPlayer(QWidget):
             print("Playback finished.")
             return
 
-        duration_ms = self.note_duration[self.play_index]
+        
+        # Create a list of tuples to be send to fretboard.js        
+        notes_to_highlight = []
+        for item in self.play_seq[self.play_index]:
+            notes_to_highlight.append(item)
+        self.highlight_notes(notes_to_highlight)
 
-        # # 1. Get current note details
-        # note_id = self.midi[self.play_index]
-        # duration_ms = self.note_duration[self.play_index]
-        # # note_name = self.note_names[self.play_index]
-        # string = self.play_seq[self.play_index][0]
-        # fret = self.play_seq[self.play_index][1]
-        # note_name = f"{string}{fret}" #debug only
-        
-        # print(f"Playing: {note_name} (MIDI: {note_id}) for {duration_ms}ms")
+        # --- Play Sound and Schedule Next Note ---
+        duration_ms = self.note_duration[self.play_index]
         data = self.sound_list[self.play_index]
-        self.play_sound(data)
-        
-        # TODO
-        # self.highlight_note(string, fret)
+
+        # Use a zero-delay timer to play the sound. This allows the GUI event loop
+        # to process the highlight_notes call before the sound starts, preventing glitches.
+        QTimer.singleShot(0, lambda: self.play_sound(data))
 
         self.play_index += 1
         QTimer.singleShot(duration_ms, self.play_next_note)
@@ -138,10 +135,18 @@ class FretboardPlayer(QWidget):
         
 
 
-    def highlight_note(self, string, fret):
-        # This function runs JavaScript on your HTML page.
-        # Calls the setPlayingNote function in playback_view.html
-        js_code = f"highlightNote('{string}', {fret});"
+    def highlight_notes(self, notes):
+        '''
+        Calls highlightNotes() in main.js with the list of notes to be highlighted in the current step.
+        '''
+        # Convert the list of tuples into a list of dictionaries for easier JSON conversion.
+        notes_data = []
+        for note in notes:
+            if isinstance(note, tuple): #Don't want to process note duration
+                notes_data.append({'stringName': note[0], 'fret': note[1]})
+
+        json_data = json.dumps(notes_data)
+        js_code = f"highlightNotes('{json_data}');" #highlights multiple notes
         self.web_view.page().runJavaScript(js_code)
 
 

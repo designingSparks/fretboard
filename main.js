@@ -673,6 +673,49 @@ window.loadScalePattern = function(jsonData) {
     }
 };
 
+
+/* Similar to highlightNote() but can highlight multiple notes
+*/
+window.highlightNotes = function(jsonData) {
+    console.log("Received highlight request from Python.");
+    
+    // First, reset all notes on the fretboard to their inactive (faded) state.
+    document.querySelectorAll('.note, .open-string-note').forEach(note => {
+        note.classList.add('faded-note');
+    });
+    
+    //Cycle through jsonData and call highlight note
+    try {
+        const notesToHighlight = JSON.parse(jsonData);
+        const stringNameToIndex = GUITAR_TUNING.reduce((acc, stringInfo, index) => {
+            acc[stringInfo.name] = index;
+            return acc;
+        }, {});
+
+        notesToHighlight.forEach(noteInfo => {
+            const stringIndex = stringNameToIndex[noteInfo.stringName];
+            const fret = noteInfo.fret;
+
+            if (stringIndex !== undefined) {
+                let noteSelector;
+                if (fret === 0) {
+                    // Selector for an open string note
+                    noteSelector = `td.string-label[data-string="${stringIndex}"] .open-string-note`;
+                } else {
+                    // Selector for a fretted note
+                    noteSelector = `td.fret[data-string="${stringIndex}"][data-fret="${fret}"] .note`;
+                }
+                const noteElement = document.querySelector(noteSelector);
+                if (noteElement) {
+                    noteElement.classList.remove('faded-note');
+                }
+            }
+        });
+    } catch (e) {
+        console.error("Failed to parse notes to highlight from Python:", e);
+    }
+};
+
 /**
  * Called from python when a new note is being played.
  * Highlights a single note on the fretboard when called from Python during playback
