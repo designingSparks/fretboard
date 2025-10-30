@@ -95,27 +95,21 @@ class FretboardPlayer(QWidget):
 
         # --- Play Sound and Schedule Next Note ---
         duration_ms = self.note_duration[self.play_index]
-        data = self.sound_list[self.play_index]
+        data_bytes = self.sound_list[self.play_index]
 
         # Use a zero-delay timer to play the sound. This allows the GUI event loop
         # to process the highlight_notes call before the sound starts, preventing glitches.
-        QTimer.singleShot(0, lambda: self.play_sound(data))
+        QTimer.singleShot(0, lambda: self.play_sound(data_bytes))
 
         self.play_index += 1
         QTimer.singleShot(duration_ms, self.play_next_note)
 
 
-    def play_sound(self, data):
-        """Plays the sound effect corresponding to the current playback play_index."""
-        # if 0 <= self.play_index < len(self.sound_list):
-        #     sound_to_play = self.sound_list[self.play_index]
-        #     sound_to_play.play()
-
-        byte_io = io.BytesIO()
-        wavfile.write(byte_io, SAMPLERATE, data)
-        data_bytes = byte_io.getvalue()
-
-        # 7. Play the single mixed buffer using the robust pattern
+    def play_sound(self, data_bytes):
+        """
+        Plays the sound effect corresponding to the current playback play_index.
+        """
+        # Play the single mixed buffer using the robust pattern
         self.player.stop()
         self._audio_output = QAudioOutput()
         self.player.setAudioOutput(self._audio_output)
@@ -125,15 +119,14 @@ class FretboardPlayer(QWidget):
         self.current_buffer.open(QIODevice.OpenModeFlag.ReadOnly)
         self.player.setSourceDevice(self.current_buffer)
         self.player.play()
-
         self.stop_button.setEnabled(True)
 
 
-    def init_fretboard(self):
-        '''
-        Initialize the fretboard with the notes in a greyed out state.
-        '''
-        pass
+    # def init_fretboard(self):
+    #     '''
+    #     Initialize the fretboard with the notes in a greyed out state.
+    #     '''
+    #     pass
         
 
 
@@ -243,8 +236,13 @@ class FretboardPlayer(QWidget):
             for note_id in item:
                 data = self._load_audio_file(note_id)
                 note_data_list.append(data)
-            note_mix = self._mix_notes(note_data_list)
-            self.sound_list.append(note_mix)
+            note_mix = self._mix_notes(note_data_list) #numpy
+            
+            byte_io = io.BytesIO()
+            wavfile.write(byte_io, SAMPLERATE, note_mix)
+            data_bytes = byte_io.getvalue()
+            self.sound_list.append(data_bytes)
+
         print("Sound list created.")
 
     def _load_audio_file(self, midi_note):
@@ -252,9 +250,16 @@ class FretboardPlayer(QWidget):
         filename = f"clean_{midi_note}.wav"
         file_path = os.path.abspath(os.path.join(self.audio_folder, filename))
         try:
-            samplerate, data = wavfile.read(file_path)
+            samplerate, data = wavfile.read(file_path) #data is a numpy array
         except Exception as e:
             print(f"Error processing {filename}: {e}")
+
+        #Convert to bytes
+        # byte_io = io.BytesIO()
+        # wavfile.write(byte_io, SAMPLERATE, data)
+        # data_bytes = byte_io.getvalue()
+        # return data_bytes
+
         return data
 
     
