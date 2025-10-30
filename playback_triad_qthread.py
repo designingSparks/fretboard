@@ -18,7 +18,52 @@ SAMPLERATE = 44100
 STRUM_DELAY_MS = 10
 HIGHLIGHTS = {'C':'highlight1'} #, 'E':'highlight2', 'G':'highlight3'
 
+
+class AudioPlayerWorker(QObject):
+    """
+    A QObject worker that handles audio playback in a separate thread.
+    It owns the QMediaPlayer instance.
+    """
+    def __init__(self):
+        super().__init__()
+        self.player = QMediaPlayer()
+        self._audio_output = QAudioOutput()
+        self.player.setAudioOutput(self._audio_output)
+        self.current_buffer = None
+
+    @Slot(bytes)
+    def play_sound(self, data_bytes):
+        """
+        Plays a sound from a byte array. This slot will be executed in the worker thread.
+        """
+        self.player.stop()
+        self.current_buffer = QBuffer()
+        self.current_buffer.setData(data_bytes)
+        self.current_buffer.open(QIODevice.OpenModeFlag.ReadOnly)
+        self.player.setSourceDevice(self.current_buffer)
+        self.player.play()
+
+    @Slot()
+    def stop_sound(self):
+        """Stops playback. This slot will be executed in the worker thread."""
+        self.player.stop()
+
+    @Slot()
+    def prime_audio(self):
+        """Plays a short silent clip to warm up the audio backend."""
+        silent_samples = np.zeros(int(SAMPLERATE * 0.01), dtype=np.int16)
+        byte_io = io.BytesIO()
+        wavfile.write(byte_io, SAMPLERATE, silent_samples)
+        self.play_sound(byte_io.getvalue())
+        # Immediately stop it, we just need to initialize the pipeline
+        QTimer.singleShot(10, self.stop_sound)
+        
+
 class FretboardPlayer(QWidget):
+    # Define signals as class attributes
+    play_sound_signal = Signal(bytes)
+    stop_sound_signal = Signal()
+
     def __init__(self):
         super().__init__()
         
@@ -59,12 +104,22 @@ class FretboardPlayer(QWidget):
         self.stop_button.clicked.connect(self.stop_playback)
         self.web_view.loadFinished.connect(self.on_load_finished)
 
-        self.player = QMediaPlayer()
-        self._audio_output = QAudioOutput() # Initialize QAudioOutput once
-        self.player.setAudioOutput(self._audio_output) # Set it to the player once
-        self.current_buffer = None
+        # --- Threading Setup for Audio ---
+        self.audio_thread = QThread()
+        self.audio_worker = AudioPlayerWorker()
+        self.audio_worker.moveToThread(self.audio_thread)
+
+        # Connect signals from the main thread to slots in the worker thread
+        self.play_sound_signal.connect(self.audio_worker.play_sound)
+        self.stop_sound_signal.connect(self.audio_worker.stop_sound)
+
+        self.audio_thread.start()
         self._prime_audio_system()
 
+    def closeEvent(self, event):
+        self.audio_thread.quit()
+        self.audio_thread.wait()
+        super().closeEvent(event)
 
     @Slot()
     def start_playback(self):
@@ -72,6 +127,7 @@ class FretboardPlayer(QWidget):
             return
             
         print("Starting playback...")
+        self.stop_button.setEnabled(True) # Enable stop button when playback starts
         self.play_button.setEnabled(False)
         self.is_playing = True
         self.play_index = 0
@@ -86,11 +142,12 @@ class FretboardPlayer(QWidget):
         self.is_playing = False
 
         # Stop the QMediaPlayer instance that is playing the sound
-        self.player.stop()
+        self.stop_sound_signal.emit()
         self.stop_button.setEnabled(False)
         self.play_button.setEnabled(True)
 
         self.clear_note_highlights()
+
 
     def play_next_note(self):
         # Stop condition: flag is false or playlist is finished
@@ -99,6 +156,8 @@ class FretboardPlayer(QWidget):
             print("Playback finished.")
             return
 
+        duration_ms = self.note_duration[self.play_index]
+        QTimer.singleShot(duration_ms, self.play_next_note) #I think it's more accurate to reinitialize the timer here
         
         # Create a list of tuples to be send to fretboard.js        
         notes_to_highlight = []
@@ -107,43 +166,16 @@ class FretboardPlayer(QWidget):
         self.highlight_notes(notes_to_highlight)
 
         # --- Play Sound and Schedule Next Note ---
-        duration_ms = self.note_duration[self.play_index]
         data_bytes = self.sound_list[self.play_index]
 
         # Use a zero-delay timer to play the sound. This allows the GUI event loop
         # to process the highlight_notes call before the sound starts, possibly preventing glitches.
-        # QTimer.singleShot(0, lambda: self.play_sound(data_bytes)) 
-        self.play_sound(data_bytes)
-
+        QTimer.singleShot(0, lambda: self.play_sound_signal.emit(data_bytes)) #works but is an overkill
+        # self.play_sound_signal.emit(data_bytes)
+        # self.stop_button.setEnabled(True)
 
         self.play_index += 1
-        QTimer.singleShot(duration_ms, self.play_next_note)
-
-
-    def play_sound(self, data_bytes, is_priming=False):
-        """
-        Plays the sound effect corresponding to the current playback play_index.
-        """
-        # Play the single mixed buffer using the robust pattern
-        self.player.stop()
-        # self._audio_output = QAudioOutput()
-        # self.player.setAudioOutput(self._audio_output)
-        self.player.setSourceDevice(None)
-        self.current_buffer = QBuffer()
-        self.current_buffer.setData(data_bytes)
-        self.current_buffer.open(QIODevice.OpenModeFlag.ReadOnly)
-        self.player.setSourceDevice(self.current_buffer)
-        self.player.play()
-        if not is_priming:
-            self.stop_button.setEnabled(True)
-
-
-    # def init_fretboard(self):
-    #     '''
-    #     Initialize the fretboard with the notes in a greyed out state.
-    #     '''
-    #     pass
-        
+        # QTimer.singleShot(duration_ms, self.play_next_note)
 
 
     def highlight_notes(self, notes):
@@ -188,11 +220,6 @@ class FretboardPlayer(QWidget):
         Not all notes send must be played. But a note must 
         Converts the Python scale pattern to a JSON string and sends it to a JavaScript function in the web view.
         """
-        # Convert the list of tuples into a list of dictionaries for easier JSON conversion.
-        # Using camelCase for keys is a common convention when passing data to JavaScript.
-        # scale_data = [
-        #     {'stringName': s, 'fret': f} for s, f in self.notes_to_highlight
-        # ]
         scale_data = []
         for s, f in self.notes_to_highlight:
             string_num = STRING_ID.index(s)
@@ -277,13 +304,18 @@ class FretboardPlayer(QWidget):
         Plays a short, silent sound to initialize the audio backend (warm-up).
         This prevents a glitch on the first user-initiated playback.
         """
-        print("Priming audio system...")
-        # Create a tiny silent audio clip (e.g., 10ms of zeros)
-        silent_samples = np.zeros(int(SAMPLERATE * 0.01), dtype=np.int16)
-        byte_io = io.BytesIO()
-        wavfile.write(byte_io, SAMPLERATE, silent_samples)
-        silent_bytes = byte_io.getvalue()
-        self.play_sound(silent_bytes, is_priming=True)
+        # Use a timer to ensure the thread has started before we send the signal
+        def prime():
+            print("Priming audio system...")
+            # Create a tiny silent audio clip (e.g., 10ms of zeros)
+            silent_samples = np.zeros(int(SAMPLERATE * 0.01), dtype=np.int16)
+            byte_io = io.BytesIO()
+            wavfile.write(byte_io, SAMPLERATE, silent_samples)
+            silent_bytes = byte_io.getvalue()
+            self.play_sound_signal.emit(silent_bytes)
+            # Immediately stop it, we just need to initialize the pipeline
+            QTimer.singleShot(10, self.stop_sound_signal.emit)
+        QTimer.singleShot(100, prime) # Wait 100ms for thread to be ready
 
     
     def _mix_notes(self, sound_data_list):
@@ -317,6 +349,11 @@ class FretboardPlayer(QWidget):
         mixed_arr_int16 = (mixed_arr * np.iinfo(np.int16).max).astype(np.int16)
         return mixed_arr_int16
     
+    def closeEvent(self, event):
+        """Ensure the audio thread is properly shut down when the window closes."""
+        self.audio_thread.quit()
+        self.audio_thread.wait()
+        super().closeEvent(event)
 
 # --- To run the application (example) ---
 if __name__ == "__main__":
