@@ -10,7 +10,8 @@ import numpy as np
 from triads import C_MAJOR_TRIAD_HIGHLIGHT #This will be highlighted in grey by default
 from triads import C_MAJOR_TRIAD_SEQ #These are the notes that are played
 from constants import FRETBOARD_NOTES_NAME, STRING_ID
-from scales import C_MAJOR_POS4_HIGHLIGHT, C_MAJOR_POS4_PLAY
+from scales import C_MAJOR_POS4_HIGHLIGHT, C_MAJOR_POS4_PLAY, C_MAJOR_POS5_HIGHLIGHT, C_MAJOR_POS5_PLAY
+
 
 
 NOTE_FOLDER = 'clean'
@@ -62,6 +63,7 @@ class AudioPlayerWorker(QObject):
 class FretboardPlayer(QWidget):
     # Define signals as class attributes
     play_sound_signal = Signal(bytes)
+    prime_audio_signal = Signal() # New signal for priming
     stop_sound_signal = Signal()
 
     def __init__(self):
@@ -113,8 +115,15 @@ class FretboardPlayer(QWidget):
         self.play_sound_signal.connect(self.audio_worker.play_sound)
         self.stop_sound_signal.connect(self.audio_worker.stop_sound)
 
-        self.audio_thread.start()
-        self._prime_audio_system()
+        # Connect the new priming signal
+        self.prime_audio_signal.connect(self.audio_worker.prime_audio)
+        self.audio_thread.start() # Start the worker thread
+        self.prime_audio_signal.emit() # Trigger priming in the worker thread
+
+        # --- Playback Timer ---
+        # Use a persistent QTimer for the playback sequence
+        self.playback_timer = QTimer(self)
+        self.playback_timer.timeout.connect(self.play_next_note)
 
     def closeEvent(self, event):
         self.audio_thread.quit()
@@ -131,7 +140,7 @@ class FretboardPlayer(QWidget):
         self.play_button.setEnabled(False)
         self.is_playing = True
         self.play_index = 0
-        self.play_next_note() # Start the chain
+        self.play_next_note() # Play the first note immediately and start the timer chain
 
     @Slot()
     def stop_playback(self):
@@ -141,6 +150,7 @@ class FretboardPlayer(QWidget):
         print("Stopping playback...")
         self.is_playing = False
 
+        self.playback_timer.stop() # Stop the timer
         # Stop the QMediaPlayer instance that is playing the sound
         self.stop_sound_signal.emit()
         self.stop_button.setEnabled(False)
@@ -151,31 +161,25 @@ class FretboardPlayer(QWidget):
 
     def play_next_note(self):
         # Stop condition: flag is false or playlist is finished
-        if not self.is_playing or self.play_index >= len(self.midi):
+        if not self.is_playing or self.play_index >= len(self.sound_list):
             self.stop_playback() # Clean up
             print("Playback finished.")
             return
 
-        duration_ms = self.note_duration[self.play_index]
-        QTimer.singleShot(duration_ms, self.play_next_note) #I think it's more accurate to reinitialize the timer here
-        
         # Create a list of tuples to be send to fretboard.js        
         notes_to_highlight = []
         for item in self.play_seq[self.play_index]:
             notes_to_highlight.append(item)
         self.highlight_notes(notes_to_highlight)
 
-        # --- Play Sound and Schedule Next Note ---
+        # --- Play Sound ---
         data_bytes = self.sound_list[self.play_index]
-
-        # Use a zero-delay timer to play the sound. This allows the GUI event loop
-        # to process the highlight_notes call before the sound starts, possibly preventing glitches.
-        QTimer.singleShot(0, lambda: self.play_sound_signal.emit(data_bytes)) #works but is an overkill
-        # self.play_sound_signal.emit(data_bytes)
-        # self.stop_button.setEnabled(True)
-
+        self.play_sound_signal.emit(data_bytes) #TODO: Check if this makes a difference on slower platforms
+        
+        # --- Schedule the *next* note ---
+        duration_ms = self.note_duration[self.play_index]
         self.play_index += 1
-        # QTimer.singleShot(duration_ms, self.play_next_note)
+        self.playback_timer.start(duration_ms)
 
 
     def highlight_notes(self, notes):
@@ -299,25 +303,6 @@ class FretboardPlayer(QWidget):
         return data
 
 
-    def _prime_audio_system(self):
-        """
-        Plays a short, silent sound to initialize the audio backend (warm-up).
-        This prevents a glitch on the first user-initiated playback.
-        """
-        # Use a timer to ensure the thread has started before we send the signal
-        def prime():
-            print("Priming audio system...")
-            # Create a tiny silent audio clip (e.g., 10ms of zeros)
-            silent_samples = np.zeros(int(SAMPLERATE * 0.01), dtype=np.int16)
-            byte_io = io.BytesIO()
-            wavfile.write(byte_io, SAMPLERATE, silent_samples)
-            silent_bytes = byte_io.getvalue()
-            self.play_sound_signal.emit(silent_bytes)
-            # Immediately stop it, we just need to initialize the pipeline
-            QTimer.singleShot(10, self.stop_sound_signal.emit)
-        QTimer.singleShot(100, prime) # Wait 100ms for thread to be ready
-
-    
     def _mix_notes(self, sound_data_list):
         """
         Pre-mixes a triad into a single numpy array and stores it.
@@ -355,10 +340,10 @@ class FretboardPlayer(QWidget):
         self.audio_thread.wait()
         super().closeEvent(event)
 
-# --- To run the application (example) ---
+
 if __name__ == "__main__":
     import sys
-    os.environ["QTWEBENGINE_REMOTE_DEBUGGING"] = "8080"
+    os.environ["QTWEBENGINE_REMOTE_DEBUGGING"] = "8080" #for debugging in the browser
     app = QApplication(sys.argv)
     window = FretboardPlayer()
     window.show()
