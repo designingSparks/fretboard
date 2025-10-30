@@ -60,9 +60,9 @@ class FretboardPlayer(QWidget):
         self.web_view.loadFinished.connect(self.on_load_finished)
 
         self.player = QMediaPlayer()
-        self._audio_output = None
+        self._audio_output = QAudioOutput() # Initialize QAudioOutput once
+        self.player.setAudioOutput(self._audio_output) # Set it to the player once
         self.current_buffer = None
-
         self._prime_audio_system()
 
 
@@ -110,8 +110,10 @@ class FretboardPlayer(QWidget):
         data_bytes = self.sound_list[self.play_index]
 
         # Use a zero-delay timer to play the sound. This allows the GUI event loop
-        # to process the highlight_notes call before the sound starts, preventing glitches.
-        QTimer.singleShot(0, lambda: self.play_sound(data_bytes))
+        # to process the highlight_notes call before the sound starts, possibly preventing glitches.
+        # QTimer.singleShot(0, lambda: self.play_sound(data_bytes)) 
+        self.play_sound(data_bytes)
+
 
         self.play_index += 1
         QTimer.singleShot(duration_ms, self.play_next_note)
@@ -123,8 +125,8 @@ class FretboardPlayer(QWidget):
         """
         # Play the single mixed buffer using the robust pattern
         self.player.stop()
-        self._audio_output = QAudioOutput()
-        self.player.setAudioOutput(self._audio_output)
+        # self._audio_output = QAudioOutput()
+        # self.player.setAudioOutput(self._audio_output)
         self.player.setSourceDevice(None)
         self.current_buffer = QBuffer()
         self.current_buffer.setData(data_bytes)
