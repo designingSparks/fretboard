@@ -93,13 +93,15 @@
         /* Default highlight, no highlight1,2,3 added */
         .note, .open-string-note {
             background-color: #444; /* Default dark grey for all scale notes */
+            color: #fff;
         }
         
         /* Default highlight, no highlight1,2,3 added 
            Because this rule comes LAST, it will take precedence. 
         */
         .note.inactive, .open-string-note.inactive {
-            background-color: #9d9d9d; /* Inactive note colour */
+            background-color: #bcbcbc; /* Inactive note colour */
+            color: #000;
         }
 
         /* Highlight Group 1 (e.g., Root) */
@@ -110,8 +112,8 @@
         }
         .note.highlight1.inactive, 
         .open-string-note.highlight1.inactive {
-            background-color: #f5b7b1; /* Inactive (Faded Red) */
-            color: #fff;
+            background-color: #fec1bb; /* Inactive (Faded Red) */
+            color: #000;
         }
         /* Highlight Group 2 (e.g., Third) */
         .note.highlight2, 

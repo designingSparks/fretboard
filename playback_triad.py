@@ -15,7 +15,7 @@ from constants import FRETBOARD_NOTES_NAME, STRING_ID
 NOTE_FOLDER = 'clean'
 SAMPLERATE = 44100
 STRUM_DELAY_MS = 10
-HIGHLIGHTS = {'C':'highlight3'} #, 'E':'highlight2', 'G':'highlight3'
+HIGHLIGHTS = {'C':'highlight1'} #, 'E':'highlight2', 'G':'highlight3'
 
 class FretboardPlayer(QWidget):
     def __init__(self):
@@ -40,6 +40,8 @@ class FretboardPlayer(QWidget):
         
         self.play_button = QPushButton("Play")
         self.stop_button = QPushButton("Stop")
+        self.stop_button.setEnabled(False)
+        #Don't need to disable the play button as the prime sound only plays for 10ms
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.web_view)
@@ -54,6 +56,8 @@ class FretboardPlayer(QWidget):
         self.player = QMediaPlayer()
         self._audio_output = None
         self.current_buffer = None
+
+        self._prime_audio_system()
 
 
     @Slot()
@@ -76,6 +80,8 @@ class FretboardPlayer(QWidget):
 
         # Stop the QMediaPlayer instance that is playing the sound
         self.player.stop()
+        self.stop_button.setEnabled(False)
+
         # Clear any note highlights
         self.clear_note_highlights()
 
@@ -105,7 +111,7 @@ class FretboardPlayer(QWidget):
         QTimer.singleShot(duration_ms, self.play_next_note)
 
 
-    def play_sound(self, data_bytes):
+    def play_sound(self, data_bytes, is_priming=False):
         """
         Plays the sound effect corresponding to the current playback play_index.
         """
@@ -119,7 +125,8 @@ class FretboardPlayer(QWidget):
         self.current_buffer.open(QIODevice.OpenModeFlag.ReadOnly)
         self.player.setSourceDevice(self.current_buffer)
         self.player.play()
-        self.stop_button.setEnabled(True)
+        if not is_priming:
+            self.stop_button.setEnabled(True)
 
 
     # def init_fretboard(self):
@@ -236,7 +243,7 @@ class FretboardPlayer(QWidget):
             for note_id in item:
                 data = self._load_audio_file(note_id)
                 note_data_list.append(data)
-            note_mix = self._mix_notes(note_data_list) #numpy
+            note_mix = self._mix_notes(note_data_list) #numpy array
             
             byte_io = io.BytesIO()
             wavfile.write(byte_io, SAMPLERATE, note_mix)
@@ -253,17 +260,22 @@ class FretboardPlayer(QWidget):
             samplerate, data = wavfile.read(file_path) #data is a numpy array
         except Exception as e:
             print(f"Error processing {filename}: {e}")
-
-        #Convert to bytes
-        # byte_io = io.BytesIO()
-        # wavfile.write(byte_io, SAMPLERATE, data)
-        # data_bytes = byte_io.getvalue()
-        # return data_bytes
-
         return data
 
-    
-    
+
+    def _prime_audio_system(self):
+        """
+        Plays a short, silent sound to initialize the audio backend (warm-up).
+        This prevents a glitch on the first user-initiated playback.
+        """
+        print("Priming audio system...")
+        # Create a tiny silent audio clip (e.g., 10ms of zeros)
+        silent_samples = np.zeros(int(SAMPLERATE * 0.01), dtype=np.int16)
+        byte_io = io.BytesIO()
+        wavfile.write(byte_io, SAMPLERATE, silent_samples)
+        silent_bytes = byte_io.getvalue()
+        self.play_sound(silent_bytes, is_priming=True)
+
     
     def _mix_notes(self, sound_data_list):
         """
