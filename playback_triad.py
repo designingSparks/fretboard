@@ -10,6 +10,7 @@ import numpy as np
 from triads import C_MAJOR_TRIAD_HIGHLIGHT #This will be highlighted in grey by default
 from triads import C_MAJOR_TRIAD_SEQ #These are the notes that are played
 from constants import FRETBOARD_NOTES_NAME, STRING_ID
+from scales import C_MAJOR_POS4_HIGHLIGHT, C_MAJOR_POS4_PLAY
 
 
 NOTE_FOLDER = 'clean'
@@ -22,8 +23,13 @@ class FretboardPlayer(QWidget):
         super().__init__()
         
         self.audio_folder = NOTE_FOLDER
-        self.notes_to_highlight = C_MAJOR_TRIAD_HIGHLIGHT #TODO: Allow scale to be selectable in the GUI
-        self.play_seq = C_MAJOR_TRIAD_SEQ
+
+        
+        # self.notes_to_highlight = C_MAJOR_TRIAD_HIGHLIGHT
+        # self.play_seq = C_MAJOR_TRIAD_SEQ
+
+        self.notes_to_highlight = C_MAJOR_POS4_HIGHLIGHT
+        self.play_seq = C_MAJOR_POS4_PLAY
 
         self.midi = None #e.g. self.midi = [[64, 60, 55], [67, 64, 60], [72, 67, 64], [76, 72, 67]]
         self.note_duration = None
