@@ -9,6 +9,8 @@ from PySide6.QtCore import QTimer, Slot, QIODevice, Qt
 from PySide6.QtMultimedia import QAudioSink, QAudioFormat, QMediaDevices
 import numpy as np
 
+# --- Configuration ---
+TONE_MS = 100  # The length of each note in milliseconds
 
 class LowLevelAudioPlayer(QWidget):
     """
@@ -19,9 +21,9 @@ class LowLevelAudioPlayer(QWidget):
         self.setWindowTitle("QAudioSink Sequencer")
 
         # --- Audio Data ---
-        self.audio_buffers = []  # List to hold raw audio data as byte arrays
-        self.concatenated_buffer = b'' # All audio files joined together
-        self.buffer_position = 0 # Our current read position in the concatenated buffer
+        self.audio_buffers = []  # List to hold individual raw audio data as byte arrays
+        self.current_sample_index = 0 # Index of the sample we are playing from audio_buffers
+        self.current_sample_position = 0 # Position within the current sample's byte array
         self.file_names = []
         self.audio_format = None
 
@@ -77,8 +79,7 @@ class LowLevelAudioPlayer(QWidget):
                     print(f"Audio format detected: {samplerate}Hz, {self.audio_format.channelCount()} channels, 16-bit PCM")
 
                 # --- Truncate the audio data to 500ms ---
-                duration_ms = 500
-                num_samples = int(samplerate * (duration_ms / 1000.0))
+                num_samples = int(samplerate * (TONE_MS / 1000.0))
                 truncated_data = data[:num_samples]
 
                 # Add a short silence (e.g., 250ms) between clips for separation
@@ -95,7 +96,6 @@ class LowLevelAudioPlayer(QWidget):
 
             except Exception as e:
                 print(f"Error processing {abs_path}: {e}")
-        self.concatenated_buffer = b''.join(self.audio_buffers)
         print(f"Successfully loaded {len(self.audio_buffers)} audio files.")
 
     def init_audio_system(self):
@@ -110,8 +110,10 @@ class LowLevelAudioPlayer(QWidget):
             return
 
         self.audio_sink = QAudioSink(device_info, self.audio_format)
-        # Set a buffer size (e.g., 2 seconds of audio)
-        buffer_size = self.audio_format.bytesForDuration(2000000) # in microseconds
+        # Calculate a buffer size that is responsive but safe from underruns.
+        # 40% of the tone duration is a good starting point.
+        buffer_duration_us = (TONE_MS * 0.4) * 1000
+        buffer_size = self.audio_format.bytesForDuration(int(buffer_duration_us))
         self.audio_sink.setBufferSize(buffer_size)
         print("QAudioSink initialized.")
 
@@ -143,7 +145,8 @@ class LowLevelAudioPlayer(QWidget):
 
         self.start_button.setEnabled(False)
         self.stop_button.setEnabled(True)
-        self.buffer_position = 0
+        self.current_sample_index = 0
+        self.current_sample_position = 0
 
         # Start the sink, which returns the QIODevice for writing.
         self.output_device = self.audio_sink.start()
@@ -163,7 +166,8 @@ class LowLevelAudioPlayer(QWidget):
         self.start_button.setEnabled(True)
         self.stop_button.setEnabled(False)
         self.status_label.setText("Sequence stopped.")
-        self.buffer_position = 0
+        self.current_sample_index = 0
+        self.current_sample_position = 0
         self.list_widget.setCurrentRow(-1)
         print("Audio sink stopped.")
 
@@ -173,24 +177,59 @@ class LowLevelAudioPlayer(QWidget):
         Called by a timer to push data into the audio sink's buffer.
         This creates a continuous stream.
         """
-        if not self.output_device or self.buffer_position >= len(self.concatenated_buffer):
-            if self.buffer_position >= len(self.concatenated_buffer):
-                self.status_label.setText("Sequence complete.")
-                # Wait for the buffer to finish playing before stopping
-                if self.audio_sink.bytesFree() == self.audio_sink.bufferSize():
-                    self.stop_playback()
+        # Stop if we have no device or have played all samples
+        if not self.output_device or self.current_sample_index >= len(self.audio_buffers):
+            # Check if the internal buffer is empty before stopping, to avoid cutting off the last sound
+            if self.audio_sink and self.audio_sink.bytesFree() == self.audio_sink.bufferSize():
+                if self.current_sample_index >= len(self.audio_buffers):
+                    self.status_label.setText("Sequence complete.")
+                self.stop_playback()
             return
 
         # Check how much space is available in the device's buffer
         bytes_free = self.audio_sink.bytesFree()
-        bytes_to_write = min(bytes_free, len(self.concatenated_buffer) - self.buffer_position)
+        if bytes_free <= 0:
+            return
 
-        if bytes_to_write > 0:
-            data_chunk = self.concatenated_buffer[self.buffer_position : self.buffer_position + bytes_to_write]
-            bytes_written = self.output_device.write(data_chunk)
-            if bytes_written > 0:
-                self.buffer_position += bytes_written
+        # --- This is the moment we know a new sample is starting ---
+        if self.current_sample_position == 0:
+            # Dynamically calculate the latency based on how much data is currently in the buffer.
+            # This ensures the UI update syncs with the audible sound.
+            bytes_in_buffer = self.audio_sink.bufferSize() - self.audio_sink.bytesFree()
+            latency_us = self.audio_format.durationForBytes(bytes_in_buffer)
+            latency_compensation_ms = latency_us / 1000.0
+            
+            print(f"Dynamic latency compensation: {latency_compensation_ms:.2f} ms")
+            QTimer.singleShot(latency_compensation_ms, lambda index=self.current_sample_index: self.update_ui_for_sample(index))
 
+        current_buffer = self.audio_buffers[self.current_sample_index]
+        bytes_remaining_in_sample = len(current_buffer) - self.current_sample_position
+
+        # Determine how much data to write in this chunk
+        bytes_to_write = min(bytes_free, bytes_remaining_in_sample)
+
+        # Get the chunk and write it to the audio device
+        data_chunk = current_buffer[self.current_sample_position : self.current_sample_position + bytes_to_write]
+        bytes_written = self.output_device.write(data_chunk)
+
+        if bytes_written > 0:
+            self.current_sample_position += bytes_written
+
+        # If we've finished writing the current sample, move to the next one
+        if self.current_sample_position >= len(current_buffer):
+            self.current_sample_index += 1
+            self.current_sample_position = 0
+
+    def update_ui_for_sample(self, index):
+        """
+        Updates the UI to reflect the currently playing sample.
+        This is called by a delayed QTimer to compensate for audio latency.
+        """
+        if index < len(self.file_names):
+            current_file = self.file_names[index]
+            print(f"--- UI Update for sample: {current_file} ---")
+            self.status_label.setText(f"Playing: {current_file}")
+            self.list_widget.setCurrentRow(index)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
