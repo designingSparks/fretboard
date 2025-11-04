@@ -1,3 +1,4 @@
+# ref: https://stackoverflow.com/questions/56086862/how-to-play-a-simulated-signal-continuously-with-qaudiooutput
 import sys
 import os
 from scipy.io import wavfile
