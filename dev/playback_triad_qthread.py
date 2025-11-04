@@ -1,3 +1,10 @@
+'''
+For reference only.
+It shows how a QMediaPlayer can be run in a separate QThread.
+This approach is defunct, as I no longer need to use a QMediaPlayer.
+'''
+
+
 import os
 import json
 from PySide6.QtCore import *
