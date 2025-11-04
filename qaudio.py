@@ -1,17 +1,17 @@
 # ref: https://stackoverflow.com/questions/56086862/how-to-play-a-simulated-signal-continuously-with-qaudiooutput
 import sys
 import os
-from scipy.io import wavfile
+import wavfile
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QListWidget
 )
 from PySide6.QtCore import QTimer, Slot, QIODevice, Qt
 from PySide6.QtMultimedia import QAudioSink, QAudioFormat, QMediaDevices
-import numpy as np
+# import numpy as np
 
 # --- Configuration ---
-TONE_MS = 100  # The length of each note in milliseconds
+TONE_MS = 500  # The length of each note in milliseconds
 
 class LowLevelAudioPlayer(QWidget):
     """

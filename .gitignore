@@ -2,3 +2,4 @@ tasks.todo
 clean
 notes
 *.pyc
+build

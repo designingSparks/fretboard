@@ -1,4 +1,7 @@
 '''
+Defunct. For reference only.
+QMediaPlayer is no longer used.
+This was an early attempt to get the QMediaPlayer working.
 This works but the best pattern is in playback_triad.py, where the following lines are only called once:
     self.player = QMediaPlayer()
     self._audio_output = QAudioOutput() # Initialize QAudioOutput once

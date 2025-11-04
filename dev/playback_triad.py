@@ -1,3 +1,8 @@
+'''
+Playback multiple notes using a QMediaPlayer.
+Use as a reference to show how the sound files can be manipulated to generate a single sound.
+'''
+
 import os
 import json
 from PySide6.QtCore import *
