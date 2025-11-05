@@ -161,15 +161,35 @@ class CustomValueSlider(QAbstractSlider):
         painter.setPen(QPen(Qt.GlobalColor.black, 2))
         font = QFont()
         font.setPointSize(10)
+        fm = painter.fontMetrics()
         painter.setFont(font)
         
         step = self.singleStep()
         if step == 0:  
             return
             
-        num_steps = int((self.maximum() - self.minimum()) / step)
+        total_steps = int((self.maximum() - self.minimum()) / step)
+        if total_steps <= 0:
+            return
+
+        # --- Dynamic Tick Calculation ---
+        # Determine a reasonable interval for drawing ticks to avoid overlap.
+        # We'll use the width of the largest number as a guide for spacing.
+        max_label_width = fm.horizontalAdvance(str(self.maximum())) + 20 # Add padding
         
-        for i in range(num_steps + 1):
+        # Calculate how many ticks can fit without crowding
+        max_visible_ticks = max(1, usable_width // max_label_width)
+        
+        # Calculate the step interval to achieve this
+        tick_interval = 1
+        if total_steps > max_visible_ticks:
+            tick_interval = round(total_steps / max_visible_ticks)
+        
+        for i in range(total_steps + 1):
+            # Only draw a tick if it's on our calculated interval
+            if i % tick_interval != 0 and i != total_steps:
+                continue
+
             val = self.minimum() + (i * step)
             
             ratio = (val - self.minimum()) / (self.maximum() - self.minimum())
@@ -178,7 +198,7 @@ class CustomValueSlider(QAbstractSlider):
             painter.drawLine(int(x_pos), int(track_y - self.TICK_HEIGHT // 2), 
                              int(x_pos), int(track_y + self.TICK_HEIGHT // 2))
 
-            text_rect = QRectF(x_pos - 40, track_y + self.TICK_HEIGHT, 80, 20)
+            text_rect = QRectF(x_pos - max_label_width / 2, track_y + self.TICK_HEIGHT, max_label_width, 20)
             painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, str(val))
 
         # 3. --- Draw the Handle (Rectangle with Arrow) ---
@@ -264,9 +284,9 @@ class MainWindow(QWidget):
         self.slider = CustomValueSlider()
         
         # --- Configure the slider as requested ---
-        self.slider.setRange(1000, 2000)
-        self.slider.setSingleStep(100) # This is crucial for our drawing/snapping
-        self.slider.setPageStep(100)
+        self.slider.setRange(1000, 5000)
+        self.slider.setSingleStep(25) # This is crucial for our drawing/snapping
+        self.slider.setPageStep(25)
         self.slider.setValue(1500)     # Set initial value
 
         # A label to show the slider's current value
