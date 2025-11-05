@@ -3,3 +3,5 @@ clean
 notes
 *.pyc
 build
+icon.icns
+icon.png

@@ -6,9 +6,10 @@ from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QListWidget
 )
-from PySide6.QtCore import QTimer, Slot, QIODevice, Qt
+from PySide6.QtCore import QTimer, Slot, Qt
 from PySide6.QtMultimedia import QAudioSink, QAudioFormat, QMediaDevices
-# import numpy as np
+from utilities import get_resource_path
+
 
 # --- Configuration ---
 TONE_MS = 500  # The length of each note in milliseconds
@@ -56,11 +57,13 @@ class LowLevelAudioPlayer(QWidget):
         Loads WAV files (clean_40.wav to clean_50.wav) into memory as raw byte buffers.
         It also determines the audio format from the first successfully loaded file.
         """
-        base_dir = "clean"
+        base_dir = get_resource_path("clean")
+
         print("Preloading audio files...")
         for i in range(40, 51):
             file_name = f"clean_{i}.wav"
-            abs_path = os.path.abspath(os.path.join(base_dir, file_name))
+            # abs_path = os.path.abspath(os.path.join(base_dir, file_name))
+            abs_path = os.path.join(base_dir, file_name)
             if not os.path.exists(abs_path):
                 print(f"Warning: File not found, skipping: {abs_path}")
                 continue
