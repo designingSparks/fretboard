@@ -27,7 +27,7 @@ class CustomValueSlider(QAbstractSlider):
         self.TICK_HEIGHT = 8
         
         # Vertical padding to avoid clipping
-        self.TOP_MARGIN = 5
+        self.TOP_MARGIN = 60  # Increased to make room for floating value
         self.BOTTOM_MARGIN = 30 # Extra space for text
         self.LEFT_MARGIN = 15
         self.RIGHT_MARGIN = 15
@@ -71,74 +71,6 @@ class CustomValueSlider(QAbstractSlider):
 
     # --- The Magic: Painting ---
 
-    # def paintEvent(self, event):
-    #     painter = QPainter(self)
-    #     painter.setRenderHint(QPainter.RenderHint.Antialiasing) # Makes circles smooth
-
-    #     # Get widget dimensions
-    #     width = self.width()
-    #     height = self.height()
-        
-    #     # Calculate the usable "track" area
-    #     usable_width = width - self.LEFT_MARGIN - self.RIGHT_MARGIN
-    #     # Y-position for the center of the track and handle
-    #     track_y = self.TOP_MARGIN + self.HANDLE_RADIUS
-
-
-    #     # 1. --- Draw the Track ---
-    #     track_pen = QPen(Qt.GlobalColor.gray, self.TRACK_HEIGHT)
-    #     track_pen.setCapStyle(Qt.PenCapStyle.RoundCap) # This is the correct way
-    #     painter.setPen(track_pen)
-    #     painter.drawLine(self.LEFT_MARGIN, track_y, 
-    #                      width - self.RIGHT_MARGIN, track_y)
-
-    #     # 2. --- Draw Ticks and Numbers ---
-    #     painter.setPen(QPen(Qt.GlobalColor.black, 2))
-    #     font = QFont()
-    #     font.setPointSize(10)
-    #     painter.setFont(font)
-        
-    #     # Calculate how many steps we have
-    #     step = self.singleStep()
-    #     if step == 0:  # Avoid division by zero if step not set
-    #         return
-            
-    #     num_steps = int((self.maximum() - self.minimum()) / step)
-        
-    #     for i in range(num_steps + 1):
-    #         val = self.minimum() + (i * step)
-            
-    #         # Calculate the x-position for this value
-    #         ratio = (val - self.minimum()) / (self.maximum() - self.minimum())
-    #         x_pos = self.LEFT_MARGIN + (ratio * usable_width)
-
-    #         # Draw the tick
-    #         painter.drawLine(int(x_pos), int(track_y - self.TICK_HEIGHT // 2), 
-    #                          int(x_pos), int(track_y + self.TICK_HEIGHT // 2))
-
-    #         # Draw the number text
-    #         text_rect = QRectF(x_pos - 40, track_y + self.TICK_HEIGHT, 80, 20)
-    #         painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, str(val))
-
-    #     # 3. --- Draw the Handle ---
-        
-    #     # Calculate the handle's x-position
-    #     current_ratio = 0.0
-    #     # Avoid division by zero if max == min
-    #     if (self.maximum() - self.minimum()) > 0:
-    #         current_ratio = (self.value() - self.minimum()) / (self.maximum() - self.minimum())
-            
-    #     handle_x = self.LEFT_MARGIN + (current_ratio * usable_width)
-    #     handle_pos = QPointF(handle_x, track_y)
-
-    #     # Set brush and pen for the handle
-    #     painter.setBrush(QBrush(Qt.GlobalColor.darkCyan))
-    #     painter.setPen(QPen(Qt.GlobalColor.black, 1))
-        
-    #     painter.drawEllipse(handle_pos, self.HANDLE_RADIUS, self.HANDLE_RADIUS)
-    #     # ^^^ The stray line was here. It is now gone. ^^^
-
-    # Draws a rectange with point as the slide element.
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -147,7 +79,7 @@ class CustomValueSlider(QAbstractSlider):
         height = self.height()
         
         usable_width = width - self.LEFT_MARGIN - self.RIGHT_MARGIN
-        track_y = self.TOP_MARGIN + self.HANDLE_RADIUS # This will now be the top of the handle/arrow base
+        track_y = self.TOP_MARGIN + self.HANDLE_RADIUS
 
         # 1. --- Draw the Track ---
         track_pen = QPen(Qt.GlobalColor.gray, self.TRACK_HEIGHT)
@@ -157,7 +89,6 @@ class CustomValueSlider(QAbstractSlider):
                          width - self.RIGHT_MARGIN, track_y)
 
         # 2. --- Draw Ticks and Numbers ---
-        # (This part remains unchanged)
         painter.setPen(QPen(Qt.GlobalColor.black, 2))
         font = QFont()
         font.setPointSize(10)
@@ -173,20 +104,13 @@ class CustomValueSlider(QAbstractSlider):
             return
 
         # --- Dynamic Tick Calculation ---
-        # Determine a reasonable interval for drawing ticks to avoid overlap.
-        # We'll use the width of the largest number as a guide for spacing.
-        max_label_width = fm.horizontalAdvance(str(self.maximum())) + 20 # Add padding
-        
-        # Calculate how many ticks can fit without crowding
+        max_label_width = fm.horizontalAdvance(str(self.maximum())) + 20
         max_visible_ticks = max(1, usable_width // max_label_width)
-        
-        # Calculate the step interval to achieve this
         tick_interval = 1
         if total_steps > max_visible_ticks:
             tick_interval = round(total_steps / max_visible_ticks)
         
         for i in range(total_steps + 1):
-            # Only draw a tick if it's on our calculated interval
             if i % tick_interval != 0 and i != total_steps:
                 continue
 
@@ -201,8 +125,7 @@ class CustomValueSlider(QAbstractSlider):
             text_rect = QRectF(x_pos - max_label_width / 2, track_y + self.TICK_HEIGHT, max_label_width, 20)
             painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, str(val))
 
-        # 3. --- Draw the Handle (Rectangle with Arrow) ---
-        
+        # 3. --- Calculate Handle Position ---
         current_ratio = 0.0
         if (self.maximum() - self.minimum()) > 0:
             current_ratio = (self.value() - self.minimum()) / (self.maximum() - self.minimum())
@@ -211,24 +134,58 @@ class CustomValueSlider(QAbstractSlider):
         
         # Define handle dimensions
         HANDLE_WIDTH = 20
-        HANDLE_HEIGHT = 25
-        ARROW_HEIGHT = 8 # Height of the arrow triangle
+        HANDLE_HEIGHT = 10  # Reduced from 25 to original size
+        ARROW_HEIGHT = 8
         
         # Calculate the top-left point of the rectangle
         rect_x = handle_x_center - HANDLE_WIDTH / 2
-        rect_y = track_y - HANDLE_HEIGHT - ARROW_HEIGHT # Move up from the track
+        rect_y = track_y - HANDLE_HEIGHT - ARROW_HEIGHT
         
         # Create the rectangle
         handle_rect = QRectF(rect_x, rect_y, HANDLE_WIDTH, HANDLE_HEIGHT)
 
-        # Create the arrow polygon (3 points for a triangle)
+        # Create the arrow polygon
         arrow_points = [
-            QPointF(handle_x_center - HANDLE_WIDTH / 2, track_y - ARROW_HEIGHT), # Bottom-left of rect
-            QPointF(handle_x_center + HANDLE_WIDTH / 2, track_y - ARROW_HEIGHT), # Bottom-right of rect
-            QPointF(handle_x_center, track_y + 2) # Point of the arrow, a little below the track
+            QPointF(handle_x_center - HANDLE_WIDTH / 2, track_y - ARROW_HEIGHT),
+            QPointF(handle_x_center + HANDLE_WIDTH / 2, track_y - ARROW_HEIGHT),
+            QPointF(handle_x_center, track_y + 2)
         ]
         
-        # Set brush and pen for the handle
+        # 4. --- Draw Floating Value Box FIRST (behind handle) ---
+        value_text = str(self.value())
+        value_font = QFont()
+        value_font.setPointSize(11)
+        value_font.setBold(True)
+        painter.setFont(value_font)
+        value_fm = painter.fontMetrics()
+        
+        # Calculate size of text
+        text_width = value_fm.horizontalAdvance(value_text)
+        text_height = value_fm.height()
+        
+        # Box padding
+        box_padding = 6
+        box_width = text_width + box_padding * 2
+        box_height = text_height + box_padding * 2
+        
+        # Position box above the handle
+        box_x = handle_x_center - box_width / 2
+        box_y = rect_y - box_height - 5  # 5px gap above handle
+        
+        # Clamp box_x to prevent it from going off the edges
+        box_x = max(5, min(box_x, width - box_width - 5))
+        
+        # Draw the box
+        value_box = QRectF(box_x, box_y, box_width, box_height)
+        painter.setBrush(QBrush(Qt.GlobalColor.white))
+        painter.setPen(QPen(Qt.GlobalColor.darkCyan, 2))
+        painter.drawRoundedRect(value_box, 4, 4)
+        
+        # Draw the text
+        painter.setPen(QPen(Qt.GlobalColor.darkCyan))
+        painter.drawText(value_box, Qt.AlignmentFlag.AlignCenter, value_text)
+        
+        # 5. --- Draw the Handle (on top) ---
         painter.setBrush(QBrush(Qt.GlobalColor.darkCyan))
         painter.setPen(QPen(Qt.GlobalColor.black, 1))
         
@@ -247,28 +204,18 @@ class CustomValueSlider(QAbstractSlider):
         width = self.width()
         usable_width = width - self.LEFT_MARGIN - self.RIGHT_MARGIN
         
-        # Handle edge case where usable_width is zero to prevent division by zero
         if usable_width <= 0:
             return self.minimum()
 
-        # Get mouse x, clamped within the usable area
         x = max(self.LEFT_MARGIN, min(pos.x(), width - self.RIGHT_MARGIN))
-        
-        # Calculate the ratio (0.0 to 1.0) of the click
         ratio = (x - self.LEFT_MARGIN) / usable_width
-        
-        # Convert ratio to a raw value
         raw_value = self.minimum() + ratio * (self.maximum() - self.minimum())
         
-        # --- This is the "snapping" logic ---
         step = self.singleStep()
         if step == 0:
             return int(raw_value)
             
-        # 1. Find nearest multiple of 'step' from the minimum
         snapped_val = round((raw_value - self.minimum()) / step) * step + self.minimum()
-        
-        # 2. Clamp to min/max
         return max(self.minimum(), min(self.maximum(), int(snapped_val)))
 
 
@@ -285,9 +232,9 @@ class MainWindow(QWidget):
         
         # --- Configure the slider as requested ---
         self.slider.setRange(1000, 5000)
-        self.slider.setSingleStep(25) # This is crucial for our drawing/snapping
+        self.slider.setSingleStep(25)
         self.slider.setPageStep(25)
-        self.slider.setValue(1500)     # Set initial value
+        self.slider.setValue(1500)
 
         # A label to show the slider's current value
         self.label = QLabel(f"Current Value: {self.slider.value()}")
