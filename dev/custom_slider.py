@@ -170,7 +170,7 @@ class CustomValueSlider(QAbstractSlider):
         
         # Position box above the handle
         box_x = handle_x_center - box_width / 2
-        box_y = rect_y - box_height - 5  # 5px gap above handle
+        box_y = rect_y - box_height +2  # - 5 5px gap above handle
         
         # Clamp box_x to prevent it from going off the edges
         box_x = max(5, min(box_x, width - box_width - 5))
@@ -179,7 +179,7 @@ class CustomValueSlider(QAbstractSlider):
         value_box = QRectF(box_x, box_y, box_width, box_height)
         painter.setBrush(QBrush(Qt.GlobalColor.white))
         painter.setPen(QPen(Qt.GlobalColor.darkCyan, 2))
-        painter.drawRoundedRect(value_box, 4, 4)
+        # painter.drawRoundedRect(value_box, 4, 4)
         
         # Draw the text
         painter.setPen(QPen(Qt.GlobalColor.darkCyan))
