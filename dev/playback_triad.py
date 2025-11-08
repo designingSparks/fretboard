@@ -4,6 +4,12 @@ Use as a reference to show how the sound files can be manipulated to generate a 
 '''
 
 import os
+import sys
+
+# Add the parent directory to the Python path to allow for package-like imports
+# Needed since this file is in a subdirectory.
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import json
 from PySide6.QtCore import *
 from PySide6.QtWebEngineWidgets import QWebEngineView
@@ -12,11 +18,10 @@ from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from scipy.io import wavfile
 import io
 import numpy as np
+from scales import C_MAJOR_POS4_HIGHLIGHT, C_MAJOR_POS4_PLAY
 from triads import C_MAJOR_TRIAD_HIGHLIGHT #This will be highlighted in grey by default
 from triads import C_MAJOR_TRIAD_SEQ #These are the notes that are played
 from constants import FRETBOARD_NOTES_NAME, STRING_ID
-from scales import C_MAJOR_POS4_HIGHLIGHT, C_MAJOR_POS4_PLAY
-
 
 NOTE_FOLDER = 'clean'
 SAMPLERATE = 44100
