@@ -167,7 +167,8 @@ class FretboardPlayer(QWidget):
         self.note_names = [] #for debugging only
 
 
-        for string_name, fret, duration in self.scale_play:
+        for tab, duration in self.scale_play:
+            string_name, fret = tab
             if string_name in open_string_midi:
                 midi_note = open_string_midi[string_name] + fret
                 self.midi.append(midi_note)
