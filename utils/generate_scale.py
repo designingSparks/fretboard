@@ -38,10 +38,10 @@ PATTERN_1_BASE = {
 }
 
 PATTERN_2_BASE = {
-    'major_root_string': 'E',
-    'major_root_fret': 3,  # G on low E string
+    'major_root_string': 'E', # Corrected
+    'major_root_fret': 3,  # G on low E string, which is the root of G major for this pattern shape
     'minor_root_string': 'D', 
-    'minor_root_fret': 2,  # E on D sting, i.e. Emin
+    'minor_root_fret': 2,  # E on D string, which is the root of E minor for this pattern shape
     # Pattern positions relative to minor root (E at fret 0)
     'notes': [
         ('e', 3), ('e', 5), # High e string
@@ -52,6 +52,57 @@ PATTERN_2_BASE = {
         ('E', 3), ('E', 5),  # Low E string
     ]
 }
+
+PATTERN_3_BASE = {
+    'major_root_string': 'D', # G on D string
+    'major_root_fret': 5,  
+    'minor_root_string': 'A', # E on A string
+    'minor_root_fret': 7,
+    # Pattern notes for Gmaj / Emin (from image)
+    'notes': [
+        ('e', 5), ('e', 7),  # High e string
+        ('B', 5), ('B', 8),
+        ('G', 4), ('G', 7),
+        ('D', 5), ('D', 7),
+        ('A', 5), ('A', 7),
+        ('E', 5), ('E', 7),  # Low E string
+    ]
+}
+
+PATTERN_4_BASE = {
+    'major_root_string': 'A', # G 
+    'major_root_fret': 10,
+    'minor_root_string': 'e', # E on high e string
+    'minor_root_fret': 7,
+    # Pattern notes for Gmaj / Emin
+    'notes': [
+        ('e', 7), ('e', 10), # High e string
+        ('B', 8), ('B', 10),
+        ('G', 7), ('G', 9),
+        ('D', 7), ('D', 9),
+        ('A', 7), ('A', 10),
+        ('E', 7), ('E', 10), # Low E string
+    ]
+}
+
+PATTERN_5_BASE = {
+    'major_root_string': 'e', # G on high e string
+    'major_root_fret': 10,
+    'minor_root_string': 'E', # E on low E string
+    'minor_root_fret': 12,
+    # Pattern notes for Gmaj / Emin
+    'notes': [
+        ('e', 10), ('e', 12), # High e string
+        ('B', 10), ('B', 12),
+        ('G', 9), ('G', 12),
+        ('D', 9), ('D', 12),
+        ('A', 10), ('A', 12),
+        ('E', 10), ('E', 12), # Low E string
+    ]
+}
+
+
+ALL_PATTERNS = {1: PATTERN_1_BASE, 2: PATTERN_2_BASE, 3: PATTERN_3_BASE, 4: PATTERN_4_BASE, 5: PATTERN_5_BASE}
 
 def parse_scale_name(scale_name):
     """
@@ -83,39 +134,44 @@ def find_note_fret(note, string_name, start_fret=0):
             return fret
     return None
 
+
 def calculate_shift(target_root, target_type, pattern_num):
     """Calculate how many frets to shift the base pattern."""
-    if pattern_num == 1:
-        pattern = PATTERN_1_BASE
-        
-        if target_type == 'major':
-            # Find where the target root appears on the major root string
-            base_root_fret = pattern['major_root_fret']
-            target_root_fret = find_note_fret(target_root, pattern['major_root_string'])
-        else:  # minor
-            # Find where the target root appears on the minor root string
-            base_root_fret = pattern['minor_root_fret']
-            target_root_fret = find_note_fret(target_root, pattern['minor_root_string'])
-        
-        if target_root_fret is None:
-            raise ValueError(f"Could not find {target_root} on {pattern['major_root_string']} string")
-        
-        return target_root_fret - base_root_fret
     
-    raise NotImplementedError(f"Pattern {pattern_num} not yet implemented")
+    pattern = ALL_PATTERNS.get(pattern_num)
+    if not pattern:
+        raise NotImplementedError(f"Pattern {pattern_num} not yet implemented")
+    
+    # Find the fret of the target root on the pattern's designated root string
+    if target_type == 'major':
+        base_root_fret = pattern['major_root_fret']
+        root_string = pattern['major_root_string']
+        target_root_fret = find_note_fret(target_root, root_string)
+    else:  # minor
+        base_root_fret = pattern['minor_root_fret']
+        root_string = pattern['minor_root_string']
+        target_root_fret = find_note_fret(target_root, root_string)
+    
+    if target_root_fret is None:
+        raise ValueError(f"Could not find {target_root} on {root_string} string")
+    
+    # The shift is the difference between where the root *should* be
+    # and where it is in the base pattern.
+    return target_root_fret - base_root_fret
 
 def generate_pattern(scale_name, pos_num):
     """Generate the pattern for a given scale and position."""
     root, scale_type = parse_scale_name(scale_name)
     
-    if pos_num != 1:
-        raise NotImplementedError(f"Only position 1 is currently implemented")
+    if pos_num not in ALL_PATTERNS:
+        raise NotImplementedError(f"Only positions {', '.join(map(str, ALL_PATTERNS.keys()))} are currently implemented")
     
     # Calculate the shift needed
     shift = calculate_shift(root, scale_type, pos_num)
     
-    # Apply shift to base pattern
-    pattern = PATTERN_1_BASE
+    # Select the correct base pattern to apply the shift to
+    pattern = ALL_PATTERNS[pos_num]
+
     shifted_notes = []
     
     for string, fret in pattern['notes']:
@@ -125,13 +181,14 @@ def generate_pattern(scale_name, pos_num):
     
     return shifted_notes
 
+
 def print_scale(scale_name, pos_num):
     """
     Print the scale pattern for copy-paste.
     
     Args:
         scale_name: e.g., 'Gmaj', 'Emin', 'C#maj', 'F#min'
-        pos_num: Pattern number (1-5, currently only 1 implemented)
+        pos_num: Pattern number (1-5)
     """
     scale = generate_pattern(scale_name, pos_num)
     
@@ -155,12 +212,35 @@ if __name__ == "__main__":
     print("=== PATTERN 1 EXAMPLES ===")
     
     # Base patterns from the diagram
-    print_scale('Emin', 1)  # E minor pentatonic
-    print_scale('Gmaj', 1)  # G major pentatonic
+    # print_scale('Emin', 1)  # E minor pentatonic
+    # print_scale('Gmaj', 1)  # G major pentatonic
     
-    # Shifted examples
-    print_scale('Amin', 1)  # A minor pentatonic (shifted up 5 frets)
-    print_scale('Cmaj', 1)  # C major pentatonic (shifted up 5 frets)
+    # # Shifted examples
+    # print_scale('Amin', 1)  # A minor pentatonic (shifted up 5 frets)
+    # print_scale('Cmaj', 1)  # C major pentatonic (shifted up 5 frets)
     
-    print_scale('F#min', 1)  # F# minor pentatonic (shifted up 2 frets)
-    print_scale('Amaj', 1)   # A major pentatonic (shifted up 2 frets)
+    # print_scale('F#min', 1)  # F# minor pentatonic (shifted up 2 frets)
+    # print_scale('Amaj', 1)   # A major pentatonic (shifted up 2 frets)
+
+    # print("\n=== PATTERN 2 EXAMPLES ===")
+    # print_scale('Emin', 2)   # E minor pentatonic (base pattern, no shift)
+    # print_scale('Gmaj', 2)   # G major pentatonic (base pattern, no shift)
+    # print_scale('Amin', 2)   # A minor pentatonic (shifted up 5 frets)
+    # print_scale('Cmaj', 2)   # C major pentatonic (shifted up 5 frets)
+
+    print("\n=== PATTERN 3 EXAMPLES ===")
+    print_scale('Emin', 3)   # E minor pentatonic (base pattern, no shift)
+    print_scale('Gmaj', 3)   # G major pentatonic (base pattern, no shift)
+    print_scale('Amin', 3)   # A minor pentatonic (shifted up 5 frets)
+    print_scale('Cmaj', 3)   # C major pentatonic (shifted up 5 frets)
+
+    print("\n=== PATTERN 4 EXAMPLES ===")
+    print_scale('Emin', 4)
+    print_scale('Gmaj', 4)
+    print_scale('Cmaj', 4)
+
+    print("\n=== PATTERN 5 EXAMPLES ===")
+    print_scale('Emin', 5)
+    print_scale('Gmaj', 5)
+    print_scale('Cmaj', 5)
+    
