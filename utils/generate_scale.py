@@ -1,6 +1,8 @@
 """
 Guitar Pentatonic Pattern Generator
 Generates all 5 CAGED pentatonic patterns for any major or minor scale.
+Usage:
+
 """
 
 # Fretboard note mapping (25 frets, 6 strings)
