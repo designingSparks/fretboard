@@ -57,7 +57,7 @@ PATTERNS = {
     },
     4: {
         'major_root': ('A', 10),  # G on A string, fret 10
-        'minor_root': ('e', 7),   # E on high e string, fret 7
+        'minor_root': ('A', 7),   # E on A string, fret 7
         'notes': [
             ('e', 7), ('e', 10),
             ('B', 8), ('B', 10),
@@ -68,7 +68,7 @@ PATTERNS = {
         ]
     },
     5: {
-        'major_root': ('e', 10),  # G on high e string, fret 10
+        'major_root': ('A', 10),  # G on A string, fret 10
         'minor_root': ('E', 12),  # E on low E string, fret 12
         'notes': [
             ('e', 10), ('e', 12),
@@ -168,20 +168,25 @@ def calculate_fret_shift(target_root, scale_type, pattern_num):
     return target_fret - base_fret
 
 
-def generate_pattern(scale_name, pattern_num):
+def generate_pattern(scale_name, pattern_num, start_fret=0):
     """
     Generate pentatonic pattern for a given scale and position.
     
     Args:
         scale_name: Scale name (e.g., 'Gmaj', 'Amin', 'F#min')
         pattern_num: Pattern number (1-5)
+        start_fret: Preferred fret range - 0 for frets 0-11, 12 for frets 12-24 (default: 0)
     
     Returns:
         list: List of (string, fret) tuples representing the pattern
     
     Raises:
-        ValueError: If scale name or pattern is invalid
+        ValueError: If scale name, pattern, or start_fret is invalid
     """
+    # Validate start_fret parameter
+    if start_fret not in [0, 12]:
+        raise ValueError(f"start_fret must be 0 or 12, got {start_fret}")
+    
     root, scale_type = parse_scale_name(scale_name)
     
     if pattern_num not in PATTERNS:
@@ -200,21 +205,63 @@ def generate_pattern(scale_name, pattern_num):
         if 0 <= new_fret < 25:
             shifted_notes.append((string, new_fret))
     
+    if not shifted_notes:
+        return shifted_notes
+    
+    # Find the current range of the pattern
+    min_fret = min(fret for _, fret in shifted_notes)
+    max_fret = max(fret for _, fret in shifted_notes)
+    
+    # Determine if octave adjustment is needed based on start_fret preference
+    if start_fret == 0:
+        # User wants pattern in lower octave (frets 0-11)
+        # If the leftmost note is at fret 12 or higher, shift down by 12
+        if min_fret >= 12:
+            # Attempt to shift down one octave
+            wrapped_notes = []
+            for string, fret in shifted_notes:
+                wrapped_fret = fret - 12
+                if 0 <= wrapped_fret < 25:
+                    wrapped_notes.append((string, wrapped_fret))
+            
+            # Only apply wrap if all notes fit successfully
+            if len(wrapped_notes) == len(shifted_notes):
+                shifted_notes = wrapped_notes
+    
+    elif start_fret == 12:
+        # User wants pattern in higher octave (frets 12-24)
+        # If the pattern is at or below fret 12, try to shift up by 12
+        if max_fret <= 12:
+            # Attempt to shift up one octave
+            octave_up_notes = []
+            for string, fret in shifted_notes:
+                octave_fret = fret + 12
+                # Must stay within fretboard bounds (< 25)
+                if 0 <= octave_fret < 25:
+                    octave_up_notes.append((string, octave_fret))
+            
+            # Only apply octave shift if ALL notes fit within bounds
+            if len(octave_up_notes) == len(shifted_notes):
+                shifted_notes = octave_up_notes
+            # If not all notes fit, keep the original (don't shift)
+            # This prevents partial patterns
+    
     return shifted_notes
 
 
-def format_pattern_output(scale_name, pattern_num):
+def format_pattern_output(scale_name, pattern_num, start_fret=0):
     """
     Format pattern as a Python list for copy-paste.
     
     Args:
         scale_name: Scale name (e.g., 'Gmaj', 'Amin')
         pattern_num: Pattern number (1-5)
+        start_fret: Preferred fret range - 0 for frets 0-11, 12 for frets 12-24 (default: 0)
     
     Returns:
         str: Formatted Python code string
     """
-    pattern = generate_pattern(scale_name, pattern_num)
+    pattern = generate_pattern(scale_name, pattern_num, start_fret)
     root, scale_type = parse_scale_name(scale_name)
     
     # Create clean variable name
@@ -236,9 +283,16 @@ def format_pattern_output(scale_name, pattern_num):
     return '\n'.join(lines)
 
 
-def print_pattern(scale_name, pattern_num):
-    """Print formatted pattern to console."""
-    print(format_pattern_output(scale_name, pattern_num))
+def print_pattern(scale_name, pattern_num, start_fret=0):
+    """
+    Print formatted pattern to console.
+    
+    Args:
+        scale_name: Scale name (e.g., 'Gmaj', 'Amin')
+        pattern_num: Pattern number (1-5)
+        start_fret: Preferred fret range - 0 for frets 0-11, 12 for frets 12-24 (default: 0)
+    """
+    print(format_pattern_output(scale_name, pattern_num, start_fret))
 
 
 # Example usage
@@ -246,21 +300,49 @@ if __name__ == "__main__":
     print("=== PENTATONIC PATTERN GENERATOR ===\n")
     
     # Pattern 1 examples
-    print("PATTERN 1:")
+    print("PATTERN 1 (Lower Octave):")
     print_pattern('Emin', 1)
     print()
     print_pattern('Amin', 1)
     print("\n" + "="*50 + "\n")
     
     # Pattern 3 examples
-    print("PATTERN 3:")
+    print("PATTERN 3 (Lower Octave):")
     print_pattern('Emin', 3)
     print()
     print_pattern('Cmaj', 3)
     print("\n" + "="*50 + "\n")
     
-    # Pattern 5 examples
-    print("PATTERN 5:")
-    print_pattern('Gmaj', 5)
+    # Demonstrate start_fret parameter
+    print("OCTAVE SELECTION DEMO:")
+    print("Same pattern, different octaves using start_fret parameter\n")
+    
+    print("E minor Pattern 1 - Lower octave (start_fret=0):")
+    print_pattern('Emin', 1, start_fret=0)
     print()
-    print_pattern('F#min', 5)
+    
+    print("E minor Pattern 1 - Higher octave (start_fret=12):")
+    print_pattern('Emin', 1, start_fret=12)
+    print("\n" + "="*50 + "\n")
+    
+    # Another example with different scale
+    print("A minor Pattern 3 - Lower octave (start_fret=0):")
+    print_pattern('Amin', 3, start_fret=0)
+    print()
+    
+    print("A minor Pattern 3 - Higher octave (start_fret=12):")
+    print_pattern('Amin', 3, start_fret=12)
+    print("\n" + "="*50 + "\n")
+    
+    # Example where higher octave won't fit
+    print("BOUNDARY CHECK DEMO:")
+    print("G major Pattern 5 already extends high on fretboard")
+    print("Requesting higher octave will keep it in lower range if it doesn't fit:\n")
+    
+    print("G major Pattern 5 - Lower octave (start_fret=0):")
+    print_pattern('Gmaj', 5, start_fret=0)
+    print()
+    
+    print("G major Pattern 5 - Request higher octave (start_fret=12):")
+    print("(Will only shift if all notes fit within fret 24)")
+    print_pattern('Gmaj', 5, start_fret=12)
