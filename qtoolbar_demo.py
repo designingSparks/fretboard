@@ -168,7 +168,7 @@ class GuitarToolbar(QMainWindow):
         """Create a bold font for the speed text."""
         font = QFont()
         font.setBold(True)
-        font.setPointSize(14)  # Slightly larger than default
+        font.setPointSize(12)  # Slightly larger than default
         return font
         
     # === SLOT METHODS ===
