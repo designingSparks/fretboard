@@ -1,3 +1,10 @@
+'''
+OLD:
+QToolButton:hover {
+    background-color: #bdbdbd;
+}
+'''
+
 from PySide6.QtWidgets import (QMainWindow, QToolBar, QMenu, QApplication, 
                                 QWidget, QVBoxLayout)
 from PySide6.QtGui import QIcon, QAction, QFont
@@ -40,6 +47,25 @@ class GuitarToolbar(QMainWindow):
         toolbar = QToolBar("Main Toolbar")
         toolbar.setIconSize(QSize(24, 24))
         toolbar.setMovable(False)
+        toolbar.setStyleSheet("""
+            QToolButton {
+                padding: 4px;
+                border: none;
+            }
+            QToolButton:hover {
+                background-color: palette(dark);
+            }
+            QToolButton:pressed {
+                background-color: palette(mid);
+            }
+            QToolButton::menu-indicator {
+                subcontrol-origin: padding;
+                subcontrol-position: right center;
+            }
+            QToolButton::menu-button {
+                border: none;
+            }
+        """)
         self.addToolBar(toolbar)
         
         # === PLAYBACK CONTROLS ===
@@ -90,9 +116,9 @@ class GuitarToolbar(QMainWindow):
         speed_action.triggered.connect(show_speed_menu)
         toolbar.addAction(speed_action)
         
-        # Make clicking the text also trigger the action (not just the arrow)
+        # Use DelayedPopup to show button press feedback
         speed_button = toolbar.widgetForAction(speed_action)
-        speed_button.setPopupMode(speed_button.ToolButtonPopupMode.MenuButtonPopup)
+        speed_button.setPopupMode(speed_button.ToolButtonPopupMode.DelayedPopup)
         
         self.speed_action = speed_action  # Keep reference to update text
 
