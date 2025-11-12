@@ -1,10 +1,3 @@
-'''
-OLD:
-QToolButton:hover {
-    background-color: #bdbdbd;
-}
-'''
-
 from PySide6.QtWidgets import (QMainWindow, QToolBar, QMenu, QApplication, 
                                 QWidget, QVBoxLayout)
 from PySide6.QtGui import QIcon, QAction, QFont
@@ -51,7 +44,9 @@ class GuitarToolbar(QMainWindow):
             QToolButton {
                 padding: 4px;
                 border: none;
+                min-height: 24px;
             }
+            
             QToolButton:hover {
                 background-color: palette(dark);
             }
