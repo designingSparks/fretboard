@@ -78,21 +78,24 @@ class GuitarToolbar(QMainWindow):
         
         # Set default speed as checked
         self.speed_actions[1.0].setChecked(True)
-
-        # Show menu when action is triggered (aligned to bottom of toolbar)
-        # def show_speed_menu():
-        #     widget = toolbar.widgetForAction(speed_action)
-        #     pos = widget.mapToGlobal(widget.rect().bottomLeft())
-        #     speed_menu.exec(pos)
         
         speed_action.setMenu(speed_menu)
         
+        # Connect triggered signal to show menu when clicking the text
+        def show_speed_menu():
+            widget = toolbar.widgetForAction(speed_action)
+            pos = widget.mapToGlobal(widget.rect().bottomLeft())
+            speed_menu.exec(pos)
+        
+        speed_action.triggered.connect(show_speed_menu)
+        toolbar.addAction(speed_action)
+        
+        # Make clicking the text also trigger the action (not just the arrow)
+        speed_button = toolbar.widgetForAction(speed_action)
+        speed_button.setPopupMode(speed_button.ToolButtonPopupMode.MenuButtonPopup)
+        
         self.speed_action = speed_action  # Keep reference to update text
 
-        # speed_action.triggered.connect(show_speed_menu)
-        # toolbar.addAction(speed_action)
-        # self.speed_action = speed_action  
-        
         # Loop action (toggle button)
         self.loop_action = QAction(QIcon("icons/loop.svg"), "Loop", self)
         self.loop_action.setCheckable(True)
@@ -101,6 +104,31 @@ class GuitarToolbar(QMainWindow):
 
         toolbar.addAction(self.loop_action)
         toolbar.addAction(speed_action)
+        
+        # === OPTIONS MENU (moved to first group) ===
+        
+        options_action = QAction(QIcon("icons/options.svg"), "Options", self)
+        options_menu = QMenu(self)
+        
+        # Auto-play option with updated text
+        self.auto_play_action = options_menu.addAction("Auto-play part")
+        self.auto_play_action.setCheckable(True)
+        self.auto_play_action.toggled.connect(self._on_auto_play_toggled)
+        
+        # Auto-advance option with updated text
+        self.auto_advance_action = options_menu.addAction("Auto-advance part")
+        self.auto_advance_action.setCheckable(True)
+        self.auto_advance_action.toggled.connect(self._on_auto_advance_toggled)
+
+        # Show menu when action is triggered (aligned to bottom of toolbar)
+        def show_options_menu():
+            widget = toolbar.widgetForAction(options_action)
+            pos = widget.mapToGlobal(widget.rect().bottomLeft())
+            options_menu.exec(pos)
+
+        options_action.triggered.connect(show_options_menu)
+        toolbar.addAction(options_action)
+        self.options_menu = options_menu  # Keep reference
         
         # Separator between control groups
         toolbar.addSeparator()
@@ -118,42 +146,6 @@ class GuitarToolbar(QMainWindow):
         next_action.triggered.connect(self._on_next)
         next_action.setShortcut(Qt.Key_Right)
         toolbar.addAction(next_action)
-        
-        # Separator before options
-        toolbar.addSeparator()
-        
-        # === OPTIONS MENU ===
-        
-        options_action = QAction(QIcon("icons/options.svg"), "Options", self)
-        options_menu = QMenu(self)
-        
-        # Auto-play option
-        self.auto_play_action = options_menu.addAction("Auto-play on Part Select")
-        self.auto_play_action.setCheckable(True)
-        self.auto_play_action.toggled.connect(self._on_auto_play_toggled)
-        
-        # Auto-advance option
-        self.auto_advance_action = options_menu.addAction("Auto-advance After Playback")
-        self.auto_advance_action.setCheckable(True)
-        self.auto_advance_action.toggled.connect(self._on_auto_advance_toggled)
-        
-        # options_action.setMenu(options_menu)
-        # toolbar.addAction(options_action)
-
-        # Show menu when action is triggered
-        # options_action.triggered.connect(lambda: options_menu.exec(self.mapToGlobal(toolbar.widgetForAction(options_action).pos())))
-        # toolbar.addAction(options_action)
-        # self.options_menu = options_menu  # Keep reference
-
-        # Show menu when action is triggered (aligned to bottom of toolbar)
-        def show_options_menu():
-            widget = toolbar.widgetForAction(options_action)
-            pos = widget.mapToGlobal(widget.rect().bottomLeft())
-            options_menu.exec(pos)
-
-        options_action.triggered.connect(show_options_menu)
-        toolbar.addAction(options_action)
-        self.options_menu = options_menu  # Keep reference
         
     def _create_central_widget(self):
         """Create placeholder central widget (replace with your HTML fretboard)."""
