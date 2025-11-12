@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (QMainWindow, QToolBar, QMenu, QApplication, 
                                 QWidget, QVBoxLayout)
-from PySide6.QtGui import QIcon, QAction, QFont
+from PySide6.QtGui import QIcon, QAction, QFont, QActionGroup
 from PySide6.QtCore import Qt, Signal, QSize
 import sys
 
@@ -46,12 +46,13 @@ class GuitarToolbar(QMainWindow):
                 border: none;
                 min-height: 24px;
             }
-            
             QToolButton:hover {
                 background-color: palette(dark);
+                border-radius: 4px;
             }
-            QToolButton:pressed {
+            QToolButton:pressed, QToolButton:checked {
                 background-color: palette(mid);
+                border-radius: 4px;
             }
             QToolButton::menu-indicator {
                 subcontrol-origin: padding;
@@ -62,6 +63,11 @@ class GuitarToolbar(QMainWindow):
             }
         """)
         self.addToolBar(toolbar)
+        
+        # Add a spacer to the left of the first icon
+        left_spacer = QWidget()
+        left_spacer.setFixedWidth(8)
+        toolbar.addWidget(left_spacer)
         
         # === PLAYBACK CONTROLS ===
         
@@ -87,11 +93,15 @@ class GuitarToolbar(QMainWindow):
         speed_action.setToolTip("Playback Speed")
         speed_menu = QMenu(self)
         
+        speed_action_group = QActionGroup(self)
+        speed_action_group.setExclusive(True)
+        
         # Add speed options with checkable actions
         self.speed_actions = {}
         for speed in [0.25, 0.5, 0.75, 1.0]:
             speed_option = speed_menu.addAction(f"{speed}x")
             speed_option.setCheckable(True)
+            speed_action_group.addAction(speed_option)
             speed_option.triggered.connect(
                 lambda checked, s=speed: self._set_speed(s)
             )
@@ -210,10 +220,9 @@ class GuitarToolbar(QMainWindow):
     
     def _set_speed(self, speed):
         """Set playback speed."""
-        # Uncheck all speed options
-        for s, action in self.speed_actions.items():
-            action.setChecked(s == speed)
-        
+        # The QActionGroup handles unchecking other options automatically.
+        # We just need to ensure the correct one is checked.
+        self.speed_actions[speed].setChecked(True)
         self.current_speed = speed
         self.speed_action.setText(f"{speed}x")
         self.speed_changed.emit(speed)
