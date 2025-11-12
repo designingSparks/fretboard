@@ -86,7 +86,7 @@ class GuitarToolbar(QMainWindow):
         #     speed_menu.exec(pos)
         
         speed_action.setMenu(speed_menu)
-        toolbar.addAction(speed_action)
+        
         self.speed_action = speed_action  # Keep reference to update text
 
         # speed_action.triggered.connect(show_speed_menu)
@@ -98,7 +98,9 @@ class GuitarToolbar(QMainWindow):
         self.loop_action.setCheckable(True)
         self.loop_action.toggled.connect(self._on_loop_toggled)
         self.loop_action.setShortcut("L")
+
         toolbar.addAction(self.loop_action)
+        toolbar.addAction(speed_action)
         
         # Separator between control groups
         toolbar.addSeparator()
