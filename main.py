@@ -1,36 +1,39 @@
 '''
 Playback multiple notes using a QAudioSink.
-Use as a reference to show how the sound files can be manipulated to generate a single sound.
+Refactored to separate audio logic from UI.
 '''
 
 import os
 import sys
 
-# Add the parent directory to the Python path to allow for package-like imports
-# Needed since this file is in a subdirectory.
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-import json
-from PySide6.QtCore import *
-from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtWidgets import *
+from PySide6.QtCore import QObject, QTimer, Qt, Slot
+from PySide6.QtWidgets import QApplication
 from PySide6.QtMultimedia import QAudioSink, QAudioFormat, QMediaDevices
 from scipy.io import wavfile
 import numpy as np
 from scales import C_MAJOR_POS4_HIGHLIGHT, C_MAJOR_POS4_PLAY
 from triads import C_MAJOR_TRIAD_HIGHLIGHT
 from triads import C_MAJOR_TRIAD_SEQ
-from constants import FRETBOARD_NOTES_NAME, STRING_ID
+from ui.main_window import MainWindow
+from ui.fretboard_view import FretboardView
 
 NOTE_FOLDER = 'clean'
 SAMPLERATE = 44100
 STRUM_DELAY_MS = 10
 HIGHLIGHTS = {'C':'highlight1'} #, 'E':'highlight2', 'G':'highlight3'
 
-class FretboardPlayer(QWidget):
-    def __init__(self):
-        super().__init__()
-        
+class FretboardPlayer(QObject):
+    """
+    Audio engine for fretboard playback.
+    Handles all audio processing, loading, mixing, and playback timing.
+    """
+
+    def __init__(self, fretboard_view, parent=None):
+        super().__init__(parent)
+
+        # Store reference to the fretboard view
+        self.fretboard_view = fretboard_view
+
         self.audio_folder = NOTE_FOLDER
 
         self.notes_to_highlight = C_MAJOR_POS4_HIGHLIGHT
@@ -39,7 +42,7 @@ class FretboardPlayer(QWidget):
         self.midi = None
         self.note_duration = None
         self.sound_list = None  # holds the numpy arrays of the sounds played at each step
-        self.init_midi() 
+        self.init_midi()
         self.create_sound_list()
 
         self.play_index = 0
@@ -52,7 +55,7 @@ class FretboardPlayer(QWidget):
         self.push_timer = QTimer(self)
         self.push_timer.setTimerType(Qt.TimerType.PreciseTimer)
         self.push_timer.timeout.connect(self.push_audio_data)
-        
+
         # Audio streaming state
         self.current_sample_position = 0
         self.sequence_start_time = 0  # Track when sequence started for timing calculations
@@ -60,23 +63,8 @@ class FretboardPlayer(QWidget):
         # Initialize audio system
         self.init_audio_system()
 
-        self.web_view = QWebEngineView()
-        self.web_view.load(QUrl.fromLocalFile(os.path.abspath("fretboard.html")))
-        self.web_view.setZoomFactor(0.9)
-        
-        self.play_button = QPushButton("Play")
-        self.stop_button = QPushButton("Stop")
-        self.stop_button.setEnabled(False)
-
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.web_view)
-        layout.addWidget(self.play_button)
-        layout.addWidget(self.stop_button)
-        
-        # --- Connections ---
-        self.play_button.clicked.connect(self.start_playback)
-        self.stop_button.clicked.connect(self.stop_playback)
-        self.web_view.loadFinished.connect(self.on_load_finished)
+        # Connect to fretboard view loaded signal
+        self.fretboard_view.view_loaded.connect(self.on_fretboard_loaded)
 
     def init_audio_system(self):
         """Initialize the QAudioSink with the correct audio format."""
@@ -99,43 +87,41 @@ class FretboardPlayer(QWidget):
 
     @Slot()
     def start_playback(self):
+        """Start audio playback."""
         if self.is_playing or not self.audio_sink:
             return
-            
+
         print("Starting playback...")
-        self.play_button.setEnabled(False)
-        self.stop_button.setEnabled(True)
         self.is_playing = True
         self.play_index = 0
         self.current_sample_position = 0
-        
+
         # Start the audio sink
         self.output_device = self.audio_sink.start()
         print("Audio sink started")
-        
+
         # Start timer to push audio data
         self.push_timer.start(50)  # Check every 50ms
 
     @Slot()
     def stop_playback(self):
+        """Stop audio playback."""
         if not self.is_playing:
             return
-            
+
         print("Stopping playback...")
         self.is_playing = False
-        
+
         # Stop the timer and audio sink
         self.push_timer.stop()
         if self.audio_sink:
             self.audio_sink.stop()
             self.output_device = None
-        
-        self.stop_button.setEnabled(False)
-        self.play_button.setEnabled(True)
+
         self.play_index = 0
         self.current_sample_position = 0
-        
-        self.clear_note_highlights()
+
+        self.fretboard_view.clear_note_highlights()
 
     @Slot()
     def push_audio_data(self):
@@ -194,54 +180,23 @@ class FretboardPlayer(QWidget):
         """
         if not self.is_playing or index >= len(self.play_seq):
             return
-        
+
         notes_to_highlight = []
         for item in self.play_seq[index]:
             if isinstance(item, tuple):
                 notes_to_highlight.append(item)
-        
-        self.highlight_notes(notes_to_highlight)
+
+        self.fretboard_view.highlight_notes(notes_to_highlight)
         print(f"Highlighting notes for index {index}: {notes_to_highlight}")
 
-    def highlight_notes(self, notes):
-        '''
-        Calls highlightNotes() in main.js with the list of notes to be highlighted.
-        '''
-        notes_data = []
-        for note in notes:
-            if isinstance(note, tuple):
-                notes_data.append({'stringName': note[0], 'fret': note[1]})
-
-        json_data = json.dumps(notes_data)
-        js_code = f"highlightNotes('{json_data}');"
-        self.web_view.page().runJavaScript(js_code)
-
-    def clear_note_highlights(self):
-        '''
-        Called when play is manually stopped or has come to an end.
-        '''
-        self.web_view.page().runJavaScript("clearNoteHighlights();")
-
     @Slot()
-    def on_load_finished(self):
+    def on_fretboard_loaded(self):
         """
-        Called when the QWebEngineView has finished loading the HTML.
+        Called when the fretboard view has finished loading.
+        Sends initial scale data to display on the fretboard.
         """
-        print("Web view finished loading. Sending scale data to fretboard.")
-        self.send_notes_to_fretboard()
-
-    def send_notes_to_fretboard(self):
-        """
-        Converts the scale pattern to JSON and sends it to JavaScript.
-        """
-        scale_data = []
-        for s, f in self.notes_to_highlight:
-            string_num = STRING_ID.index(s)
-            note_name = FRETBOARD_NOTES_NAME[string_num][f]
-            highlight_class = HIGHLIGHTS.get(note_name)
-            scale_data.append({'stringName': s, 'fret': f, 'highlight': highlight_class})
-        json_data = json.dumps(scale_data)
-        self.web_view.page().runJavaScript(f"displayNotes('{json_data}');")
+        print("Fretboard loaded. Sending scale data to fretboard.")
+        self.fretboard_view.display_notes(self.notes_to_highlight, HIGHLIGHTS)
 
     def init_midi(self):
         """
@@ -330,11 +285,30 @@ class FretboardPlayer(QWidget):
         mixed_arr_int16 = (mixed_arr * np.iinfo(np.int16).max).astype(np.int16)
         return mixed_arr_int16
 
-# --- To run the application ---
+# --- Application entry point ---
 if __name__ == "__main__":
-    import sys
     os.environ["QTWEBENGINE_REMOTE_DEBUGGING"] = "8080"
     app = QApplication(sys.argv)
-    window = FretboardPlayer()
-    window.show()
+
+    # Create main window with toolbar
+    main_window = MainWindow()
+
+    # Create fretboard view
+    fretboard_view = FretboardView()
+
+    # Create audio engine with fretboard view reference
+    player = FretboardPlayer(fretboard_view)
+
+    # Set fretboard view as central widget
+    main_window.set_central_content(fretboard_view)
+
+    # Connect toolbar signals to player methods
+    main_window.play_clicked.connect(player.start_playback)
+    main_window.stop_clicked.connect(player.stop_playback)
+    # Note: pause not implemented yet, same as stop for now
+    main_window.pause_clicked.connect(player.stop_playback)
+
+    # Show the main window
+    main_window.show()
+
     sys.exit(app.exec())
