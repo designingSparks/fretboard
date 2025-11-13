@@ -16,7 +16,6 @@ class MainWindow(QMainWindow):
 
     # Playback control signals
     play_clicked = Signal()
-    pause_clicked = Signal()
     stop_clicked = Signal()
 
     # Speed and loop controls
@@ -82,21 +81,22 @@ class MainWindow(QMainWindow):
         
         # === PLAYBACK CONTROLS ===
         
-        # Play/Pause action (toggles between play and pause)
-        self.play_pause_action = QAction(
-            QIcon("icons/play.svg"), 
-            "Play", 
+        # Play action
+        self.play_action = QAction(
+            QIcon("icons/play.svg"),
+            "Play",
             self
         )
-        self.play_pause_action.triggered.connect(self._toggle_play_pause)
-        self.play_pause_action.setShortcut("Space")
-        toolbar.addAction(self.play_pause_action)
+        self.play_action.triggered.connect(self._on_play)
+        self.play_action.setShortcut("Space")
+        toolbar.addAction(self.play_action)
         
         # Stop action
-        stop_action = QAction(QIcon("icons/stop.svg"), "Stop", self)
-        stop_action.triggered.connect(self._on_stop)
-        stop_action.setShortcut("S")
-        toolbar.addAction(stop_action)
+        self.stop_action = QAction(QIcon("icons/stop.svg"), "Stop", self)
+        self.stop_action.triggered.connect(self._on_stop)
+        self.stop_action.setShortcut("S")
+        self.stop_action.setEnabled(False)  # Disabled initially
+        toolbar.addAction(self.stop_action)
         
         # Speed control with dropdown menu (text only, no icon)
         speed_action = QAction("1.0x", self)
@@ -198,24 +198,18 @@ class MainWindow(QMainWindow):
 
     # === SLOT METHODS ===
 
-    def _toggle_play_pause(self):
-        """Toggle between play and pause states."""
-        self.is_playing = not self.is_playing
-
-        if self.is_playing:
-            self.play_pause_action.setIcon(QIcon("icons/pause.svg"))
-            self.play_pause_action.setText("Pause")
-            self.play_clicked.emit()
-        else:
-            self.play_pause_action.setIcon(QIcon("icons/play.svg"))
-            self.play_pause_action.setText("Play")
-            self.pause_clicked.emit()
+    def _on_play(self):
+        """Handle play button click - disables play button, enables stop button."""
+        self.is_playing = True
+        self.play_action.setEnabled(False)
+        self.stop_action.setEnabled(True)
+        self.play_clicked.emit()
 
     def _on_stop(self):
-        """Handle stop button click."""
+        """Handle stop button click - re-enables play button, disables stop button."""
         self.is_playing = False
-        self.play_pause_action.setIcon(QIcon("icons/play.svg"))
-        self.play_pause_action.setText("Play")
+        self.play_action.setEnabled(True)
+        self.stop_action.setEnabled(False)
         self.stop_clicked.emit()
 
     def _set_speed(self, speed):
@@ -258,12 +252,8 @@ class MainWindow(QMainWindow):
             is_playing: Boolean indicating if playback is active
         """
         self.is_playing = is_playing
-        if is_playing:
-            self.play_pause_action.setIcon(QIcon("icons/pause.svg"))
-            self.play_pause_action.setText("Pause")
-        else:
-            self.play_pause_action.setIcon(QIcon("icons/play.svg"))
-            self.play_pause_action.setText("Play")
+        self.play_action.setEnabled(not is_playing)
+        self.stop_action.setEnabled(is_playing)
 
     def enable_navigation_buttons(self, prev_enabled, next_enabled):
         """

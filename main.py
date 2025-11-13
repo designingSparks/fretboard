@@ -6,7 +6,7 @@ Refactored to separate audio logic from UI.
 import os
 import sys
 
-from PySide6.QtCore import QObject, QTimer, Qt, Slot
+from PySide6.QtCore import QObject, QTimer, Qt, Slot, Signal
 from PySide6.QtWidgets import QApplication
 from PySide6.QtMultimedia import QAudioSink, QAudioFormat, QMediaDevices
 from scipy.io import wavfile
@@ -27,6 +27,9 @@ class FretboardPlayer(QObject):
     Audio engine for fretboard playback.
     Handles all audio processing, loading, mixing, and playback timing.
     """
+
+    # Signal emitted when playback stops (either naturally or via stop button)
+    playback_stopped = Signal()
 
     def __init__(self, fretboard_view, parent=None):
         super().__init__(parent)
@@ -122,6 +125,9 @@ class FretboardPlayer(QObject):
         self.current_sample_position = 0
 
         self.fretboard_view.clear_note_highlights()
+
+        # Notify that playback has stopped
+        self.playback_stopped.emit()
 
     @Slot()
     def push_audio_data(self):
@@ -305,8 +311,9 @@ if __name__ == "__main__":
     # Connect toolbar signals to player methods
     main_window.play_clicked.connect(player.start_playback)
     main_window.stop_clicked.connect(player.stop_playback)
-    # Note: pause not implemented yet, same as stop for now
-    main_window.pause_clicked.connect(player.stop_playback)
+
+    # Connect player signals to main window
+    player.playback_stopped.connect(lambda: main_window.update_playback_state(False))
 
     # Show the main window
     main_window.show()
