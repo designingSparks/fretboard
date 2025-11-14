@@ -4,7 +4,7 @@ Coordinates audio playback and fretboard visualization.
 '''
 
 import os
-from PySide6.QtCore import QObject, Slot
+from PySide6.QtCore import QObject, Slot, Signal
 from PySide6.QtWidgets import QApplication
 from ui.main_window import MainWindow
 from ui.fretboard_view import FretboardView
@@ -22,6 +22,9 @@ class FretboardPlayer(QObject):
     Handles the connection between audio playback and visual feedback.
     Manages lesson and part loading.
     """
+
+    # Signal emitted when the current part changes
+    part_changed = Signal(int, int)  # (current_part_index, total_parts)
 
     def __init__(self, fretboard_view, audio_engine, parent=None):
         super().__init__(parent)
@@ -66,6 +69,9 @@ class FretboardPlayer(QObject):
         # Load the specified part
         self.load_part(lesson.parts[part_index])
 
+        # Emit signal for initial part load
+        self.part_changed.emit(self.current_part_index, len(self.current_lesson.parts))
+
     def load_part(self, part):
         """
         Load and display a single part.
@@ -93,6 +99,78 @@ class FretboardPlayer(QObject):
         print(f"  Notes to highlight: {len(part.notes_to_highlight)}")
         print(f"  Play sequence steps: {part.get_note_count()}")
         print(f"  Duration: {part.get_duration_ms()}ms")
+
+    def next_part(self):
+        """
+        Navigate to the next part in the lesson.
+        Automatically stops playback if currently playing.
+        """
+        # Stop playback if playing
+        if self.audio_engine.is_playing:
+            print("Stopping playback to navigate to next part")
+            self.audio_engine.stop_playback()
+
+        # Redundant guard clause: UI disables the button when no lesson is loaded
+        # Kept for defensive programming and debugging
+        if not self.current_lesson:
+            print("Error: No lesson loaded")
+            return
+
+        # Redundant guard clause: UI disables Next button when on last part
+        # Kept for defensive programming and debugging
+        if self.current_part_index >= len(self.current_lesson.parts) - 1:
+            print("Already at last part")
+            return
+
+        # Navigate to next part
+        self.current_part_index += 1
+        print(f"\nNavigating to part {self.current_part_index + 1}/{len(self.current_lesson.parts)}")
+        self.load_part(self.current_lesson.parts[self.current_part_index])
+
+        # Emit signal so UI can update button states
+        self.part_changed.emit(self.current_part_index, len(self.current_lesson.parts))
+
+    def previous_part(self):
+        """
+        Navigate to the previous part in the lesson.
+        Automatically stops playback if currently playing.
+        """
+        # Stop playback if playing
+        if self.audio_engine.is_playing:
+            print("Stopping playback to navigate to previous part")
+            self.audio_engine.stop_playback()
+
+        # Redundant guard clause: UI disables the button when no lesson is loaded
+        # Kept for defensive programming and debugging
+        if not self.current_lesson:
+            print("Error: No lesson loaded")
+            return
+
+        # Redundant guard clause: UI disables Previous button when on first part
+        # Kept for defensive programming and debugging
+        if self.current_part_index <= 0:
+            print("Already at first part")
+            return
+
+        # Navigate to previous part
+        self.current_part_index -= 1
+        print(f"\nNavigating to part {self.current_part_index + 1}/{len(self.current_lesson.parts)}")
+        self.load_part(self.current_lesson.parts[self.current_part_index])
+
+        # Emit signal so UI can update button states
+        self.part_changed.emit(self.current_part_index, len(self.current_lesson.parts))
+
+    def can_go_next(self):
+        """Check if navigation to next part is possible."""
+        if not self.current_lesson:
+            return False
+        return self.current_part_index < len(self.current_lesson.parts) - 1
+
+    def can_go_previous(self):
+        """Check if navigation to previous part is possible."""
+        if not self.current_lesson:
+            return False
+        return self.current_part_index > 0
 
     @Slot(int)
     def on_highlight_note_index(self, index):
@@ -164,7 +242,30 @@ if __name__ == "__main__":
     # Create coordinator that connects audio and visuals
     player = FretboardPlayer(fretboard_view, audio_engine)
 
-    # Load default lesson
+    # Set fretboard view as central widget
+    main_window.set_central_content(fretboard_view)
+
+    # Connect toolbar signals to audio engine
+    main_window.play_clicked.connect(audio_engine.start_playback)
+    main_window.stop_clicked.connect(audio_engine.stop_playback)
+
+    # Connect audio engine signals to main window
+    audio_engine.playback_stopped.connect(lambda: main_window.update_playback_state(False))
+
+    # Connect navigation signals
+    main_window.previous_part_clicked.connect(player.previous_part)
+    main_window.next_part_clicked.connect(player.next_part)
+
+    # Connect part_changed signal to update navigation button states
+    # IMPORTANT: This must be connected BEFORE loading the lesson
+    player.part_changed.connect(
+        lambda idx, total: main_window.enable_navigation_buttons(
+            idx > 0,  # can go previous
+            idx < total - 1  # can go next
+        )
+    )
+
+    # Load default lesson (after all signal connections are set up)
     loader = LessonLoader()
     print("\n" + "="*70)
     print("LOADING DEFAULT LESSON")
@@ -180,16 +281,6 @@ if __name__ == "__main__":
         print("   You can load a lesson later using File > Load Lesson")
 
     print("="*70 + "\n")
-
-    # Set fretboard view as central widget
-    main_window.set_central_content(fretboard_view)
-
-    # Connect toolbar signals to audio engine
-    main_window.play_clicked.connect(audio_engine.start_playback)
-    main_window.stop_clicked.connect(audio_engine.stop_playback)
-
-    # Connect audio engine signals to main window
-    audio_engine.playback_stopped.connect(lambda: main_window.update_playback_state(False))
 
     # Show the main window
     main_window.show()

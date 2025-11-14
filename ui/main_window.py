@@ -176,18 +176,20 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
         
         # === NAVIGATION CONTROLS ===
-        
+
         # Previous part
-        prev_action = QAction(QIcon("icons/back.svg"), "Previous Part", self)
-        prev_action.triggered.connect(self._on_previous)
-        prev_action.setShortcut(Qt.Key_Left)
-        toolbar.addAction(prev_action)
-        
+        self.prev_action = QAction(QIcon("icons/back.svg"), "Previous Part", self)
+        self.prev_action.triggered.connect(self._on_previous)
+        self.prev_action.setShortcut(Qt.Key_Left)
+        self.prev_action.setEnabled(False)  # Disabled until lesson is loaded
+        toolbar.addAction(self.prev_action)
+
         # Next part
-        next_action = QAction(QIcon("icons/forward.svg"), "Next Part", self)
-        next_action.triggered.connect(self._on_next)
-        next_action.setShortcut(Qt.Key_Right)
-        toolbar.addAction(next_action)
+        self.next_action = QAction(QIcon("icons/forward.svg"), "Next Part", self)
+        self.next_action.triggered.connect(self._on_next)
+        self.next_action.setShortcut(Qt.Key_Right)
+        self.next_action.setEnabled(False)  # Disabled until lesson is loaded
+        toolbar.addAction(self.next_action)
 
     def _get_bold_font(self):
         """Create a bold font for the speed text."""
