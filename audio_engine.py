@@ -79,6 +79,24 @@ class AudioEngine(QObject):
         self.init_midi(play_seq)
         self.create_sound_list()
 
+    def load_part(self, part):
+        """
+        Load and prepare a Part object for playback.
+
+        Convenience method that extracts the play_sequence from a Part
+        and calls load_sequence().
+
+        Args:
+            part: Part object from models.lesson_model
+
+        Example:
+            >>> from models.lesson_model import Part
+            >>> part = Part(name="Scale", notes_to_highlight=[...], play_sequence=[...])
+            >>> audio_engine.load_part(part)
+        """
+        self.load_sequence(part.play_sequence)
+        print(f"Loaded part: {part.name}")
+
     def init_midi(self, play_seq):
         """
         Convert the play sequence into MIDI note numbers and durations.
