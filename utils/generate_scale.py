@@ -173,15 +173,16 @@ def calculate_fret_shift(target_root, scale_type, pattern_num):
 def generate_pattern(scale_name, pattern_num, start_fret=0):
     """
     Generate pentatonic pattern for a given scale and position.
-    
+
     Args:
         scale_name: Scale name (e.g., 'Gmaj', 'Amin', 'F#min')
         pattern_num: Pattern number (1-5)
         start_fret: Preferred fret range - 0 for frets 0-11, 12 for frets 12-24 (default: 0)
-    
+
     Returns:
-        list: List of (string, fret) tuples representing the pattern
-    
+        list: List of (string, fret) tuples representing the pattern.
+              Notes are ordered from low E string to high e string, low fret to high fret.
+
     Raises:
         ValueError: If scale name, pattern, or start_fret is invalid
     """
@@ -247,8 +248,17 @@ def generate_pattern(scale_name, pattern_num, start_fret=0):
                 shifted_notes = octave_up_notes
             # If not all notes fit, keep the original (don't shift)
             # This prevents partial patterns
-    
-    return shifted_notes
+
+    # Reverse the order to start with low E string and end with high e string
+    # Group notes by string (preserving fret order within each string),
+    # then iterate strings in reverse order (E, A, D, G, B, e)
+    # e.g. result = [('E', 0), ('E', 3), ('A', 0), ('A', 2)...
+    result = []
+    for string in reversed(STRING_NAMES):
+        string_notes = [(s, f) for s, f in shifted_notes if s == string]
+        result.extend(string_notes)
+
+    return result
 
 
 def format_pattern_output(scale_name, pattern_num, start_fret=0):

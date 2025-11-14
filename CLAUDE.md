@@ -6,6 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 For loading .wav files, use the wavefile.py file directly rather than scipy.io.wavfile.read.
 The avoids having to package scipy with the final distribution.
 
+### Python Virtual Environment
+This project uses a Python virtual environment located at `/Users/john/python_venv/venv_3.12/bin`.
+When running Python commands from the terminal, first activate the virtual environment:
+```bash
+source /Users/john/python_venv/venv_3.12/bin/activate
+```
+Or run Python directly using the venv path:
+```bash
+/Users/john/python_venv/venv_3.12/bin/python
+```
+
 ## Project Overview
 
 This is a PySide6-based guitar learning application that visualizes scales and chords on an interactive fretboard. The app plays audio sequences synchronized with visual highlights on the fretboard display, helping users learn guitar patterns and positions.
