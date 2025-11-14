@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/Users/john/python_venv/venv_3.12/bin/python:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

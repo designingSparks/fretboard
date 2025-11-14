@@ -108,7 +108,7 @@ lesson = Lesson(
 )
 
 # ============================================================================
-# ALTERNATIVE: Import existing scales/triads
+# ALTERNATIVE 1: Import existing scales/triads
 # ============================================================================
 
 # Instead of defining notes inline, you can import from scales.py:
@@ -120,3 +120,38 @@ lesson = Lesson(
 #     notes_to_highlight=C_MAJOR_POS4_HIGHLIGHT,
 #     play_sequence=C_MAJOR_POS4_PLAY
 # )
+
+# ============================================================================
+# ALTERNATIVE 2: Use Pattern Generator (Recommended for Pentatonic Scales)
+# ============================================================================
+
+# For pentatonic scales, you can generate patterns dynamically using lesson_utils:
+#
+# from lesson_utils import generate_pattern, create_play_sequence
+#
+# # Generate a pentatonic pattern
+# # Pattern numbers: 1-5 (CAGED positions)
+# # Scale names: 'Gmaj', 'Amin', 'F#min', etc.
+# G_MAJ_PENT_POS1 = generate_pattern('Gmaj', 1)
+#
+# # Create simple ascending sequence
+# PART1_PLAY = create_play_sequence(G_MAJ_PENT_POS1, duration=500)
+#
+# # Or create descending sequence
+# PART1_PLAY_DESC = create_play_sequence(G_MAJ_PENT_POS1, duration=500, ascending=False)
+#
+# # Or create ascending then descending
+# from lesson_utils import create_ascending_descending_sequence
+# PART1_PLAY_BOTH = create_ascending_descending_sequence(G_MAJ_PENT_POS1, duration=500)
+#
+# part1 = Part(
+#     name="Position 1 (E Shape)",
+#     notes_to_highlight=G_MAJ_PENT_POS1,
+#     play_sequence=PART1_PLAY
+# )
+#
+# Available helper functions from lesson_utils:
+# - generate_pattern(scale_name, pattern_num, start_fret=0)
+# - create_play_sequence(notes, duration=200, ascending=True)
+# - create_ascending_descending_sequence(notes, duration=200)
+# - repeat_sequence(notes, duration=200, repetitions=2)
