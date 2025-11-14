@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## General Notes
+For loading .wav files, use the wavefile.py file directly rather than scipy.io.wavfile.read.
+The avoids having to package scipy with the final distribution.
+
 ## Project Overview
 
 This is a PySide6-based guitar learning application that visualizes scales and chords on an interactive fretboard. The app plays audio sequences synchronized with visual highlights on the fretboard display, helping users learn guitar patterns and positions.
