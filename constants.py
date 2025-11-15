@@ -1,3 +1,15 @@
+# Fretboard note mapping (25 frets, 6 strings)
+FRETBOARD_NOTES = [
+    ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E'],  # High e
+    ['B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'],  # B
+    ['G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G'],  # G
+    ['D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D'],  # D
+    ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A'],  # A
+    ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E']   # Low E
+]
+
+STRING_MAP = {'e': 0, 'B': 1, 'G': 2, 'D': 3, 'A': 4, 'E': 5}
+STRING_NAMES = ['e', 'B', 'G', 'D', 'A', 'E']
 STRING_ID = ['e', 'B', 'G', 'D', 'A', 'E']
 
 #Contains all the possible notes of the fretboard.
@@ -32,6 +44,18 @@ FRETBOARD_NOTES_MIDI = [
     [40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64]
 ]
 
+# Chromatic scale (sharps notation)
+CHROMATIC_SCALE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
+# Map flats to sharps for normalization
+FLAT_TO_SHARP = {
+    'Db': 'C#',
+    'Eb': 'D#',
+    'Gb': 'F#',
+    'Ab': 'G#',
+    'Bb': 'A#'
+}
+
 def create_tuple(string_list, note_list):
     tuple_list = []
     for note in note_list:
@@ -50,21 +74,33 @@ def create_tuple(string_list, note_list):
     return tuple_list
 
 
-def print_tuple(tuple_list):
+def print_tuple(tuple_list, note_names=False):
     '''
     Print the items in tuple_list on the same line if the string id is the same.
-    The output is formatted as a Python list of tuples.
+    If note_names is True, it also prints the corresponding note name.
+
+    Args:
+        tuple_list: A list of (string_name, fret_number) tuples.
+        note_names: If True, display the note name for each position.
     '''
     output_lines = {}
 
     for string_name, fret_number in tuple_list:
         if string_name not in output_lines:
             output_lines[string_name] = []
-        output_lines[string_name].append(f"('{string_name}', {fret_number})")
+
+        if note_names:
+            string_index = STRING_MAP[string_name]
+            note = FRETBOARD_NOTES[string_index][fret_number]
+            formatted_str = f"('{string_name}', {fret_number}): {note}"
+        else:
+            formatted_str = f"('{string_name}', {fret_number})"
+        
+        output_lines[string_name].append(formatted_str)
 
     for string_name, tuple_strs in output_lines.items():
-        line = ", ".join(tuple_strs) + ","
-        print(f"    {line:<30}")
+        line = ", ".join(tuple_strs)
+        print(f"    {line}")
 
 
 if __name__ == "__main__":

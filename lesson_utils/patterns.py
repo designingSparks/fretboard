@@ -2,21 +2,22 @@
 Guitar Pentatonic Pattern Generator
 Generates all 5 CAGED pentatonic patterns for any major or minor scale.
 Usage:
-
+generate_pattern()
 """
 
-# Fretboard note mapping (25 frets, 6 strings)
-FRETBOARD_NOTES = [
-    ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E'],  # High e
-    ['B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'],  # B
-    ['G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G'],  # G
-    ['D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D'],  # D
-    ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A'],  # A
-    ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E']   # Low E
-]
-
-STRING_MAP = {'e': 0, 'B': 1, 'G': 2, 'D': 3, 'A': 4, 'E': 5}
-STRING_NAMES = ['e', 'B', 'G', 'D', 'A', 'E']
+try:
+    # This works when imported as part of the package
+    from ..constants import (
+        FRETBOARD_NOTES, STRING_MAP, STRING_NAMES
+    )
+except ImportError:
+    # This allows the script to be run directly, resolving the relative import
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from constants import (
+        FRETBOARD_NOTES, STRING_MAP, STRING_NAMES
+    )
 
 # Base patterns using E minor / G major as reference
 # Each pattern stores: root anchor points and note positions

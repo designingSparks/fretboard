@@ -20,6 +20,12 @@ from lesson_utils.utils import (
     repeat_sequence,
 )
 
+# Triad generation functions
+from lesson_utils.triads import (
+    generate_triad_notes,
+    parse_key,
+)
+
 __all__ = [
     # Pattern generation
     'generate_pattern',
@@ -30,4 +36,7 @@ __all__ = [
     'create_play_sequence',
     'create_ascending_descending_sequence',
     'repeat_sequence',
+    # Triad generation
+    'generate_triad_notes',
+    'parse_key',
 ]
