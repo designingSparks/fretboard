@@ -35,11 +35,11 @@ class FretboardPlayer(QWidget):
         self.audio_folder = NOTE_FOLDER
 
         
-        # self.notes_to_highlight = C_MAJOR_TRIAD_HIGHLIGHT
-        # self.play_seq = C_MAJOR_TRIAD_SEQ
+        self.notes_to_highlight = C_MAJOR_TRIAD_HIGHLIGHT
+        self.play_seq = C_MAJOR_TRIAD_SEQ
 
-        self.notes_to_highlight = C_MAJOR_POS4_HIGHLIGHT
-        self.play_seq = C_MAJOR_POS4_PLAY
+        # self.notes_to_highlight = C_MAJOR_POS4_HIGHLIGHT
+        # self.play_seq = C_MAJOR_POS4_PLAY
 
         self.midi = None #e.g. self.midi = [[64, 60, 55], [67, 64, 60], [72, 67, 64], [76, 72, 67]]
         self.note_duration = None

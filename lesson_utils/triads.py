@@ -174,7 +174,7 @@ if __name__ == "__main__":
 
     # Test C major
     print("C major triad (top 3 strings):")
-    c_maj = generate_triad_notes('Cmaj', strings=['e', 'B', 'G'], fret_range=(0, 12))
+    c_maj = generate_triad_notes('Cmaj', strings=['B', 'G', 'D'], fret_range=(0, 15))
     print_tuple(c_maj)
     print_tuple(c_maj, note_names=True)
     print()

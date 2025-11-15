@@ -235,6 +235,15 @@ function drawScalePattern(pattern) {
     // Clear any existing notes from the fretboard
     document.querySelectorAll('.note, .open-string-note').forEach(n => n.remove());
 
+    //TODO: Shift this to a separate function. I may want an option to show the open string notes.
+    // Restore open string labels (always visible, regardless of pattern)
+    GUITAR_TUNING.forEach((stringInfo, index) => {
+        const labelCell = document.querySelector(`td.string-label[data-string="${index}"]`);
+        if (labelCell) {
+            labelCell.textContent = stringInfo.name;
+        }
+    });
+
     // Create a mapping from string name to its index for quick lookups.
     const stringNameToIndex = GUITAR_TUNING.reduce((acc, stringInfo, index) => {
         acc[stringInfo.name] = index;
