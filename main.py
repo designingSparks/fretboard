@@ -284,6 +284,15 @@ if __name__ == "__main__":
 
     print("="*70 + "\n")
 
+    # Set title and subtitle once the fretboard view has loaded its content.
+    # This ensures the JavaScript functions are available to be called.
+    fretboard_view.view_loaded.connect(
+        lambda: fretboard_view.set_title('D Major Triads')
+    )
+    fretboard_view.view_loaded.connect(
+        lambda: fretboard_view.set_subtitle('Strings G, B, e')
+    )
+
     # Show the main window
     main_window.show()
 

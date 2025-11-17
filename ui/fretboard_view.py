@@ -86,3 +86,27 @@ class FretboardView(QWebEngineView):
         Clear all active note highlights on the fretboard.
         """
         self.page().runJavaScript("clearNoteHighlights();")
+
+    def set_title(self, title):
+        """
+        Set the title text on the fretboard.
+
+        Args:
+            title: String to display as the main title
+        """
+        # Escape single quotes in the title for JavaScript
+        escaped_title = title.replace("'", "\\'")
+        js_code = f"document.querySelector('.fretboard-title').textContent = '{escaped_title}';"
+        self.page().runJavaScript(js_code)
+
+    def set_subtitle(self, subtitle):
+        """
+        Set the subtitle text on the fretboard.
+
+        Args:
+            subtitle: String to display as the subtitle
+        """
+        # Escape single quotes in the subtitle for JavaScript
+        escaped_subtitle = subtitle.replace("'", "\\'")
+        js_code = f"document.querySelector('.fretboard-subtitle').textContent = '{escaped_subtitle}';"
+        self.page().runJavaScript(js_code)
