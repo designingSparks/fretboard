@@ -26,6 +26,9 @@ class FretboardPlayer(QObject):
     # Signal emitted when the current part changes
     part_changed = Signal(int, int)  # (current_part_index, total_parts)
 
+    # Signal emitted when a part is loaded with its name for subtitle display
+    subtitle_changed = Signal(str)  # part_name
+
     def __init__(self, fretboard_view, audio_engine, parent=None):
         super().__init__(parent)
 
@@ -72,6 +75,7 @@ class FretboardPlayer(QObject):
         # Emit signal for initial part load
         self.part_changed.emit(self.current_part_index, len(self.current_lesson.parts))
 
+
     def load_part(self, part):
         """
         Load and display a single part.
@@ -99,6 +103,9 @@ class FretboardPlayer(QObject):
         print(f"  Notes to highlight: {len(part.notes_to_highlight)}")
         print(f"  Play sequence steps: {part.get_note_count()}")
         print(f"  Duration: {part.get_duration_ms()}ms")
+
+        # Emit signal to update subtitle with part name
+        self.subtitle_changed.emit(part.name)
 
     def next_part(self):
         """
@@ -216,6 +223,8 @@ class FretboardPlayer(QObject):
                 self._current_part.notes_to_highlight,
                 self._current_part.highlight_classes
             )
+            # Emit subtitle signal now that the view is loaded
+            self.subtitle_changed.emit(self._current_part.name)
 
 
 # --- Application entry point ---
@@ -241,6 +250,7 @@ if __name__ == "__main__":
 
     # Create coordinator that connects audio and visuals
     player = FretboardPlayer(fretboard_view, audio_engine)
+    player
 
     # Set fretboard view as central widget
     main_window.set_central_content(fretboard_view)
@@ -265,6 +275,9 @@ if __name__ == "__main__":
         )
     )
 
+    # Connect subtitle_changed signal to update fretboard subtitle
+    player.subtitle_changed.connect(fretboard_view.set_subtitle)
+
     # Load default lesson (after all signal connections are set up)
     loader = LessonLoader()
     print("\n" + "="*70)
@@ -277,6 +290,9 @@ if __name__ == "__main__":
     if default_lesson:
         player.load_lesson(default_lesson)
         print(f"✓ Successfully loaded: {default_lesson.name}")
+        fretboard_view.view_loaded.connect(
+            lambda: fretboard_view.set_title(default_lesson.name)
+        )
     else:
         print("⚠️  Warning: Could not load default lesson")
         print("   The application will start but no lesson will be loaded.")
@@ -286,12 +302,12 @@ if __name__ == "__main__":
 
     # Set title and subtitle once the fretboard view has loaded its content.
     # This ensures the JavaScript functions are available to be called.
-    fretboard_view.view_loaded.connect(
-        lambda: fretboard_view.set_title('D Major Triads')
-    )
-    fretboard_view.view_loaded.connect(
-        lambda: fretboard_view.set_subtitle('Strings G, B, e')
-    )
+    # fretboard_view.view_loaded.connect(
+    #     lambda: fretboard_view.set_title('D Major Triads')
+    # )
+    # fretboard_view.view_loaded.connect(
+    #     lambda: fretboard_view.set_subtitle('Strings G, B, e')
+    # )
 
     # Show the main window
     main_window.show()
