@@ -14,15 +14,19 @@
             background-color: #fff;
             padding: 20px;
         }
-        .fretboard-diagram {
+        .fretboard-container {
             font-family: 'Montserrat', sans-serif;
             font-size: 14px;
             line-height: 1.2;
             display: inline-block;
         }
-        /* Add position relative to contain the absolutely positioned SVG */
+        .fretboard-header {
+            /* Normal flow - will push content below */
+            padding-left: 60px; /* Align with nut area */
+        }
         .fretboard-diagram {
-            position: relative;
+            position: relative; /* Contain the absolutely positioned SVG */
+            display: inline-block;
         }
         #string-svg-container {
             position: absolute;
@@ -164,29 +168,34 @@
             font-weight: 700;
             color: #333;
             margin-bottom: 5px;
-            padding-left: 60px; /* Align with nut area */
         }
         .fretboard-subtitle {
             font-size: 16px;
             font-weight: 400;
             color: #666;
             margin-bottom: 15px;
-            padding-left: 60px; /* Align with nut area */
         }
 
     </style>
 </head>
 <body>
 
-<div class="fretboard-diagram">
-    <div class="fretboard-title">Dmajor Triads</div>
-    <div class="fretboard-subtitle">Strings G, B, e</div>
-    <table id="fretboard-table">
-        <tbody id="fretboard-body"></tbody>
-        <tfoot id="fretboard-footer"></tfoot>
-    </table>
-    <!-- SVG container for strings. It will be populated by main.js -->
-    <svg id="string-svg-container"></svg>
+<div class="fretboard-container">
+    <!-- Header section (normal flow) -->
+    <div class="fretboard-header">
+        <div class="fretboard-title"> </div>
+        <div class="fretboard-subtitle"> </div>
+    </div>
+
+    <!-- Fretboard rendering area (isolated positioning) -->
+    <div class="fretboard-diagram">
+        <table id="fretboard-table">
+            <tbody id="fretboard-body"></tbody>
+            <tfoot id="fretboard-footer"></tfoot>
+        </table>
+        <!-- SVG container for strings. It will be populated by main.js -->
+        <svg id="string-svg-container"></svg>
+    </div>
 </div>
 
 <script src="main.js" type="module"></script>
