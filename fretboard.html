@@ -158,11 +158,29 @@
             z-index: 0; /* Lowest z-index to appear behind strings and notes */
         }
 
+        /* --- Title and Subtitle --- */
+        .fretboard-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 5px;
+            padding-left: 60px; /* Align with nut area */
+        }
+        .fretboard-subtitle {
+            font-size: 16px;
+            font-weight: 400;
+            color: #666;
+            margin-bottom: 15px;
+            padding-left: 60px; /* Align with nut area */
+        }
+
     </style>
 </head>
 <body>
 
 <div class="fretboard-diagram">
+    <div class="fretboard-title">Dmajor Triads</div>
+    <div class="fretboard-subtitle">Strings G, B, e</div>
     <table id="fretboard-table">
         <tbody id="fretboard-body"></tbody>
         <tfoot id="fretboard-footer"></tfoot>

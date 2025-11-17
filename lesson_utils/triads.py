@@ -5,7 +5,7 @@ This file is not used by the program. It is just used to help generate the triad
 try:
     # This works when imported as part of the package
     from ..constants import (
-        create_tuple, CHROMATIC_SCALE, STRING_MAP, FLAT_TO_SHARP
+        CHROMATIC_SCALE, STRING_MAP, FLAT_TO_SHARP, FRETBOARD_NOTES, STRING_ID
     )
 except ImportError:
     # This allows the script to be run directly, resolving the relative import
@@ -13,8 +13,58 @@ except ImportError:
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from constants import (
-        create_tuple, CHROMATIC_SCALE, STRING_MAP, FLAT_TO_SHARP
+        CHROMATIC_SCALE, STRING_MAP, FLAT_TO_SHARP, FRETBOARD_NOTES, STRING_ID
     )
+
+def _create_tuple(string_list, note_list):
+    '''
+    Helper function for generating triad notes.
+    '''
+    tuple_list = []
+    for note in note_list:
+        for string_id in string_list:
+            for i in range(len(FRETBOARD_NOTES[string_id])):
+                if FRETBOARD_NOTES[string_id][i] == note:
+                    tuple_list.append((string_id, i))
+
+    # Sort the list of tuples. It will sort by the first element (string_id),
+    # and then by the second element (fret number) for ties.
+    tuple_list.sort()
+    #Substitute the first tuple element for the string name, 'e' = 0 etc
+    for i in range(len(tuple_list)):
+        tuple_list[i] = (STRING_ID[tuple_list[i][0]], tuple_list[i][1])
+
+    return tuple_list
+
+
+
+def print_tuple(tuple_list, note_names=False):
+    '''
+    Print the items in tuple_list on the same line if the string id is the same.
+    If note_names is True, it also prints the corresponding note name.
+
+    Args:
+        tuple_list: A list of (string_name, fret_number) tuples.
+        note_names: If True, display the note name for each position.
+    '''
+    output_lines = {}
+
+    for string_name, fret_number in tuple_list:
+        if string_name not in output_lines:
+            output_lines[string_name] = []
+
+        if note_names:
+            string_index = STRING_MAP[string_name]
+            note = FRETBOARD_NOTES[string_index][fret_number]
+            formatted_str = f"('{string_name}', {fret_number}): {note}"
+        else:
+            formatted_str = f"('{string_name}', {fret_number})"
+        
+        output_lines[string_name].append(formatted_str)
+
+    for string_name, tuple_strs in output_lines.items():
+        line = ", ".join(tuple_strs)
+        print(f"    {line}")
 
 
 def normalize_note(note):
@@ -146,9 +196,9 @@ def generate_triad_notes(key, strings=None, fret_range=(0, 24)):
     triad_notes = [get_note_at_interval(root, interval) for interval in intervals]
 
     # Use create_tuple to find all positions of these notes on specified strings
-    all_positions = create_tuple(string_indices, triad_notes)
+    all_positions = _create_tuple(string_indices, triad_notes)
 
-    # Filter by fret range
+    # Filter by fret range before returning
     min_fret, max_fret = fret_range
     filtered_positions = [
         (string_name, fret) for string_name, fret in all_positions
@@ -167,7 +217,6 @@ if __name__ == "__main__":
     # This block is for testing purposes.
     # The import logic at the top of the file handles path adjustments,
     # so we only need to import test-specific utilities here.
-    from constants import print_tuple
 
     # Test examples
     print("Testing generate_triad_notes():\n")
