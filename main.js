@@ -46,6 +46,9 @@ const VIRTUAL_SCALE_LENGTH_PX = 5000;
 // This creates a smoother, more realistic overlap.
 const DOUBLE_BEND_OVERLAP_FACTOR = 0.3;
 
+// Letter spacing for notes with flat symbols (♭) to prevent them from looking too wide.
+const FLAT_SYMBOL_LETTER_SPACING = '-0.2em';
+
 // This will be populated by drawStringsAsSVG with the coordinates for each string.
 let STRING_GEOMETRY = [];
 
@@ -271,6 +274,10 @@ function drawScalePattern(pattern) {
                 if (noteInfo.highlight) { // If highlight is not null or undefined
                     noteDiv.classList.add(noteInfo.highlight);
                 }
+                // Apply tighter letter-spacing only for flat symbols (♭) - not needed on fret 0.
+                // if (noteInfo.hasFlat) {
+                //     noteDiv.style.letterSpacing = FLAT_SYMBOL_LETTER_SPACING;
+                // }
                 noteDiv.textContent = stringName;
                 noteDiv.dataset.fret = 0;
                 noteDiv.dataset.duration = noteInfo.duration;
@@ -284,6 +291,10 @@ function drawScalePattern(pattern) {
                 noteDiv.classList.add('note', 'inactive'); // Add default and inactive classes
                 if (noteInfo.highlight) { // If highlight is not null or undefined
                     noteDiv.classList.add(noteInfo.highlight);
+                }
+                // Apply tighter letter-spacing only for flat symbols (♭)
+                if (noteInfo.hasFlat) {
+                    noteDiv.style.letterSpacing = FLAT_SYMBOL_LETTER_SPACING;
                 }
                 noteDiv.textContent = noteInfo.noteName; // Use the name from Python
                 noteDiv.dataset.fret = fret;

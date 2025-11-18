@@ -94,9 +94,12 @@ class FretboardPlayer(QObject):
 
         # Update fretboard display if it's already loaded
         if self.fretboard_view.isVisible():
+            # Get use_sharp setting from current lesson, default to True
+            use_sharp = self.current_lesson.use_sharp if self.current_lesson else True
             self.fretboard_view.display_notes(
                 part.notes_to_highlight,
-                part.highlight_classes
+                part.highlight_classes,
+                use_sharp=use_sharp
             )
 
         print(f"Loaded part: {part.name}")
@@ -219,9 +222,12 @@ class FretboardPlayer(QObject):
         print("Fretboard loaded.")
         if self._current_part:
             print(f"Displaying part: {self._current_part.name}")
+            # Get use_sharp setting from current lesson, default to True
+            use_sharp = self.current_lesson.use_sharp if self.current_lesson else True
             self.fretboard_view.display_notes(
                 self._current_part.notes_to_highlight,
-                self._current_part.highlight_classes
+                self._current_part.highlight_classes,
+                use_sharp=use_sharp
             )
             # Emit subtitle signal now that the view is loaded
             self.subtitle_changed.emit(self._current_part.name)

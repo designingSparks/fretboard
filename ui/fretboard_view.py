@@ -7,7 +7,7 @@ import os
 import json
 from PySide6.QtCore import QUrl, Signal, Slot
 from PySide6.QtWebEngineWidgets import QWebEngineView
-from constants import FRETBOARD_NOTES, STRING_ID
+from constants import FRETBOARD_NOTES_SHARP, FRETBOARD_NOTES_FLAT, STRING_ID
 
 
 class FretboardView(QWebEngineView):
@@ -36,7 +36,7 @@ class FretboardView(QWebEngineView):
         print("Fretboard view loaded successfully")
         self.view_loaded.emit()
 
-    def display_notes(self, notes_to_highlight, highlight_classes=None):
+    def display_notes(self, notes_to_highlight, highlight_classes=None, use_sharp=True):
         """
         Display notes on the fretboard in an inactive state.
 
@@ -44,20 +44,32 @@ class FretboardView(QWebEngineView):
             notes_to_highlight: List of (string_name, fret) tuples
             highlight_classes: Dict mapping note names to CSS highlight classes
                              e.g., {'C': 'highlight1', 'E': 'highlight2'}
+            use_sharp: If True, use sharp notation (C#, D#). If False, use flat notation (Db, Eb)
         """
         if highlight_classes is None:
             highlight_classes = {}
 
+        # Select the appropriate note mapping based on sharp/flat preference
+        fretboard_notes = FRETBOARD_NOTES_SHARP if use_sharp else FRETBOARD_NOTES_FLAT
+
         scale_data = []
         for s, f in notes_to_highlight:
             string_num = STRING_ID.index(s)
-            note_name = FRETBOARD_NOTES[string_num][f]
+            note_name = fretboard_notes[string_num][f]
+
+            # Convert # and b to HTML musical symbols
+            note_name = note_name.replace('#', '♯').replace('b', '♭')
+
+            # Check specifically for flat symbol (needs tighter spacing)
+            has_flat = '♭' in note_name
+
             highlight_class = highlight_classes.get(note_name)
             scale_data.append({
                 'stringName': s,
                 'fret': f,
                 'highlight': highlight_class,
-                'noteName': note_name
+                'noteName': note_name,
+                'hasFlat': has_flat
             })
 
         json_data = json.dumps(scale_data)

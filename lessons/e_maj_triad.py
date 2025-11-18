@@ -105,6 +105,7 @@ lesson = Lesson(
     parts=[part1, part2, part3, part4],
     description="Learn E major triads across 3 adjacent strings, moving from high to low strings",
     author="Your Name",
+    use_sharp=True,  # Display notes with flat notation (Db, Gb, Ab) - demonstrates flat notation
     metadata={
         'tags': ['beginner', 'triads', 'E major'],
         'estimated_time_minutes': 10,

@@ -105,6 +105,7 @@ lesson = Lesson(
     parts=[part1, part2, part3, part4],
     description="Learn A major triads across 3 adjacent strings, moving from high to low strings",
     author="Your Name",
+    use_sharp=True,  # Display notes with sharp notation (C♯, F♯, G♯)
     metadata={
         'tags': ['beginner', 'triads', 'A major'],
         'estimated_time_minutes': 10,
