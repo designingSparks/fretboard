@@ -23,7 +23,7 @@ part1 = Part(
     name="Strings G, B, e",
     notes_to_highlight=PART1_NOTES,
     play_sequence=PART1_SEQUENCE,
-    highlight_classes={'A#': 'highlight1'},  # Highlight root note (Bb = A#)
+    highlight_classes={'Bb': 'highlight1'},  # Highlight root note (Bb = A#)
     description='',
 )
 
@@ -45,7 +45,7 @@ part2 = Part(
     name="Strings D, G, B",
     notes_to_highlight=PART2_NOTES,
     play_sequence=PART2_SEQUENCE,
-    highlight_classes={'A#': 'highlight1'},
+    highlight_classes={'Bb': 'highlight1'},
     description='',
 )
 
@@ -67,7 +67,7 @@ part3 = Part(
     name="Strings A, D, G",
     notes_to_highlight=PART3_NOTES,
     play_sequence=PART3_SEQUENCE,
-    highlight_classes={'A#': 'highlight1'},
+    highlight_classes={'Bb': 'highlight1'},
     description='',
 )
 
@@ -89,7 +89,7 @@ part4 = Part(
     name="Strings E, A, D",
     notes_to_highlight=PART4_NOTES,
     play_sequence=PART4_SEQUENCE,
-    highlight_classes={'A#': 'highlight1'},
+    highlight_classes={'Bb': 'highlight1'},
     description='',
 )
 

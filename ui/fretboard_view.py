@@ -57,13 +57,14 @@ class FretboardView(QWebEngineView):
             string_num = STRING_ID.index(s)
             note_name = fretboard_notes[string_num][f]
 
+            # Look up highlight class BEFORE converting to musical symbols
+            highlight_class = highlight_classes.get(note_name)
+
             # Convert # and b to HTML musical symbols
             note_name = note_name.replace('#', '♯').replace('b', '♭')
 
             # Check specifically for flat symbol (needs tighter spacing)
             has_flat = '♭' in note_name
-
-            highlight_class = highlight_classes.get(note_name)
             scale_data.append({
                 'stringName': s,
                 'fret': f,

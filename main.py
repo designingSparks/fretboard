@@ -292,7 +292,8 @@ if __name__ == "__main__":
 
     # default_lesson = loader.load_lesson("beginner_c_major")
     # default_lesson = loader.load_lesson("g_maj_pentatonic")
-    default_lesson = loader.load_lesson("e_maj_triad")
+    default_lesson = loader.load_lesson("bflat_maj_triad")
+    # default_lesson = loader.load_lesson("c_maj_triad")
     if default_lesson:
         player.load_lesson(default_lesson)
         print(f"✓ Successfully loaded: {default_lesson.name}")
