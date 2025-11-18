@@ -222,17 +222,17 @@ if __name__ == "__main__":
     print("Testing generate_triad_notes():\n")
 
     # Test C major
-    # print("C major triad (top 3 strings):")
-    # c_maj = generate_triad_notes('Cmaj', strings=['B', 'G', 'D'], fret_range=(0, 15))
-    # print_tuple(c_maj)
-    # print_tuple(c_maj, note_names=True)
-    # print()
-
-    print("G major triad (top 3 strings):")
-    notes = generate_triad_notes('Gmaj', strings=['B', 'G', 'e'], fret_range=(0, 17))
-    print_tuple(notes)
-    print_tuple(notes, note_names=True)
+    print("Bb major triad (top 3 strings):")
+    scale = generate_triad_notes('Bbmaj', strings=['A', 'D', 'G'], fret_range=(0, 17))
+    print_tuple(scale)
+    print_tuple(scale, note_names=True)
     print()
+
+    # print("G major triad (top 3 strings):")
+    # notes = generate_triad_notes('Gmaj', strings=['B', 'G', 'e'], fret_range=(0, 17))
+    # print_tuple(notes)
+    # print_tuple(notes, note_names=True)
+    # print()
 
     # # Test A minor
     # print("A minor triad (top 3 strings):")
