@@ -86,7 +86,7 @@ Use the `make_icon.sh` script in the `icon` directory to create application icon
 
 **Constants (`constants.py`)**
 - `STRING_ID`: String names from high e to low E: `['e', 'B', 'G', 'D', 'A', 'E']`
-- `FRETBOARD_NOTES_NAME`: 2D array mapping string index and fret to note names
+- `FRETBOARD_NOTES`: 2D array mapping string index and fret to note names
 - `FRETBOARD_NOTES_MIDI`: 2D array mapping string index and fret to MIDI note numbers
 - Helper functions: `create_tuple()` to generate note lists, `print_tuple()` for formatting
 

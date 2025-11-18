@@ -7,7 +7,7 @@ import os
 import json
 from PySide6.QtCore import QUrl, Signal, Slot
 from PySide6.QtWebEngineWidgets import QWebEngineView
-from constants import FRETBOARD_NOTES_NAME, STRING_ID
+from constants import FRETBOARD_NOTES, STRING_ID
 
 
 class FretboardView(QWebEngineView):
@@ -51,12 +51,13 @@ class FretboardView(QWebEngineView):
         scale_data = []
         for s, f in notes_to_highlight:
             string_num = STRING_ID.index(s)
-            note_name = FRETBOARD_NOTES_NAME[string_num][f]
+            note_name = FRETBOARD_NOTES[string_num][f]
             highlight_class = highlight_classes.get(note_name)
             scale_data.append({
                 'stringName': s,
                 'fret': f,
-                'highlight': highlight_class
+                'highlight': highlight_class,
+                'noteName': note_name
             })
 
         json_data = json.dumps(scale_data)

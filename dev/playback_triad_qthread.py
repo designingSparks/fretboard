@@ -16,7 +16,7 @@ import io
 import numpy as np
 from triads import C_MAJOR_TRIAD_HIGHLIGHT #This will be highlighted in grey by default
 from triads import C_MAJOR_TRIAD_SEQ #These are the notes that are played
-from constants import FRETBOARD_NOTES_NAME, STRING_ID
+from constants import FRETBOARD_NOTES, STRING_ID
 from scales import C_MAJOR_POS4_HIGHLIGHT, C_MAJOR_POS4_PLAY, C_MAJOR_POS5_HIGHLIGHT, C_MAJOR_POS5_PLAY
 
 
@@ -234,7 +234,7 @@ class FretboardPlayer(QWidget):
         scale_data = []
         for s, f in self.notes_to_highlight:
             string_num = STRING_ID.index(s)
-            note_name = FRETBOARD_NOTES_NAME[string_num][f]
+            note_name = FRETBOARD_NOTES[string_num][f]
             # Use .get() to safely get the highlight class.
             # If note_name is not in HIGHLIGHTS, it will return None.
             highlight_class = HIGHLIGHTS.get(note_name)

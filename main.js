@@ -12,20 +12,20 @@ const GUITAR_TUNING = [
 // Hardcoded notes for each string and fret for a standard tuning guitar.
 // This replaces the dynamic findNote() function.
 // Each inner array represents a string from high 'e' to low 'E'.
-const FRETBOARD_NOTES = [
-    // 0: High 'e' string
-    ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E'],
-    // 1: 'B' string
-    ['B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'],
-    // 2: 'G' string
-    ['G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G'],
-    // 3: 'D' string
-    ['D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D'],
-    // 4: 'A' string
-    ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A'],
-    // 5: Low 'E' string
-    ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E']
-];
+// const FRETBOARD_NOTES = [
+//     // 0: High 'e' string
+//     ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E'],
+//     // 1: 'B' string
+//     ['B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'],
+//     // 2: 'G' string
+//     ['G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G'],
+//     // 3: 'D' string
+//     ['D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D'],
+//     // 4: 'A' string
+//     ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A'],
+//     // 5: Low 'E' string
+//     ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E']
+// ];
 
 // Configuration for SVG strings, previously handled in CSS
 const STRING_CONFIG = [
@@ -280,13 +280,12 @@ function drawScalePattern(pattern) {
             // Handle fretted notes (fret > 0)
             const cell = document.querySelector(`td.fret[data-string="${stringIndex}"][data-fret="${fret}"]`);
             if (cell) {
-                const noteName = FRETBOARD_NOTES[stringIndex][fret];
                 const noteDiv = document.createElement('div');
                 noteDiv.classList.add('note', 'inactive'); // Add default and inactive classes
                 if (noteInfo.highlight) { // If highlight is not null or undefined
                     noteDiv.classList.add(noteInfo.highlight);
                 }
-                noteDiv.textContent = noteName;
+                noteDiv.textContent = noteInfo.noteName; // Use the name from Python
                 noteDiv.dataset.fret = fret;
                 noteDiv.dataset.duration = noteInfo.duration; // Store duration for future use
                 cell.appendChild(noteDiv);
