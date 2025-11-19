@@ -47,7 +47,7 @@ class LessonBrowser(QMainWindow):
         self.current_filter = "All"
         
         self.setWindowTitle("Guitar Lesson Browser")
-        self.setMinimumSize(900, 600)
+        self.resize(900, 600)
         
         self.setup_ui()
         self.populate_table()
@@ -126,9 +126,12 @@ class LessonBrowser(QMainWindow):
         label.setStyleSheet("font-weight: bold;")
         layout.addWidget(label)
         
-        self.recent_label = QLabel("No recent lessons")
-        self.recent_label.setStyleSheet("color: gray;")
-        layout.addWidget(self.recent_label)
+        self.recent_combo = QComboBox()
+        self.recent_combo.setMinimumWidth(300)
+        self.recent_combo.addItem("No recent lessons")
+        self.recent_combo.setEnabled(False)
+        self.recent_combo.currentTextChanged.connect(self.load_recent_lesson)
+        layout.addWidget(self.recent_combo)
         
         layout.addStretch()
         
@@ -141,6 +144,13 @@ class LessonBrowser(QMainWindow):
         frame.setMaximumHeight(60)
         
         layout = QHBoxLayout(frame)
+        
+        # Filter label
+        filter_label = QLabel("Filters:")
+        filter_label.setStyleSheet("font-weight: bold;")
+        layout.addWidget(filter_label)
+        
+        layout.addSpacing(10)
         
         # Key filter
         layout.addWidget(QLabel("Key:"))
@@ -172,6 +182,13 @@ class LessonBrowser(QMainWindow):
         self.difficulty_filter.addItems(difficulties)
         self.difficulty_filter.currentTextChanged.connect(self.apply_filters)
         layout.addWidget(self.difficulty_filter)
+        
+        layout.addSpacing(20)
+        
+        # Reset button
+        reset_btn = QPushButton("Reset")
+        reset_btn.clicked.connect(self.reset_filters)
+        layout.addWidget(reset_btn)
         
         layout.addStretch()
         
@@ -216,6 +233,16 @@ class LessonBrowser(QMainWindow):
         self.current_filter = category
         self.apply_filters()
         
+    def reset_filters(self):
+        """Reset all filters to 'All'"""
+        # Reset category filter
+        self.filter_by_category("All")
+        
+        # Reset dropdown filters
+        self.key_filter.setCurrentText("All")
+        self.type_filter.setCurrentText("All")
+        self.difficulty_filter.setCurrentText("All")
+        
     def apply_filters(self):
         """Apply all active filters and update the table"""
         filtered_lessons = self.all_lessons.copy()
@@ -257,28 +284,39 @@ class LessonBrowser(QMainWindow):
         if current_row >= 0:
             lesson_name = self.table.item(current_row, 0).text()
             
-            # Add to recent lessons (keep last 5)
+            # Add to recent lessons (keep last 10)
             if lesson_name in self.recent_lessons:
                 self.recent_lessons.remove(lesson_name)
             self.recent_lessons.insert(0, lesson_name)
-            self.recent_lessons = self.recent_lessons[:5]
+            self.recent_lessons = self.recent_lessons[:10]
             
             self.update_recent_display()
             
             # In a real app, this would load the lesson
             print(f"Opening lesson: {lesson_name}")
             
+    def load_recent_lesson(self, lesson_name):
+        """Load a lesson from the recent dropdown"""
+        if lesson_name and lesson_name != "No recent lessons":
+            print(f"Loading recent lesson: {lesson_name}")
+            # In a real app, this would load the lesson
+            
     def update_recent_display(self):
-        """Update the recent lessons display"""
+        """Update the recent lessons dropdown"""
+        # Block signals to prevent triggering load_recent_lesson
+        self.recent_combo.blockSignals(True)
+        
+        self.recent_combo.clear()
+        
         if self.recent_lessons:
-            recent_text = " • ".join(self.recent_lessons[:3])
-            if len(self.recent_lessons) > 3:
-                recent_text += f" (+{len(self.recent_lessons) - 3} more)"
-            self.recent_label.setText(recent_text)
-            self.recent_label.setStyleSheet("color: black;")
+            self.recent_combo.addItems(self.recent_lessons)
+            self.recent_combo.setEnabled(True)
         else:
-            self.recent_label.setText("No recent lessons")
-            self.recent_label.setStyleSheet("color: gray;")
+            self.recent_combo.addItem("No recent lessons")
+            self.recent_combo.setEnabled(False)
+            
+        # Unblock signals
+        self.recent_combo.blockSignals(False)
 
 
 def main():
