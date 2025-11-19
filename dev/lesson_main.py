@@ -116,10 +116,12 @@ class LessonMainWindow(QMainWindow):
             if self.recent_menu is None:
                 # Remove the disabled action
                 self.file_menu.removeAction(self.recent_action)
+
                 # Create and add the submenu (before the separator)
                 self.recent_menu = QMenu("Open Recent", self)
                 self.file_menu.insertMenu(self.separator_action, self.recent_menu)
 
+            # Clear and populate the menu
             self.recent_menu.clear()
             for lesson_name in self.recent_lessons:
                 lesson_data = next((l for l in LESSONS if l["name"] == lesson_name), None)
