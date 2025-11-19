@@ -1,6 +1,9 @@
 """
 Lesson Main Window - Test Application
 Main window for testing the lesson browser dialog integration
+Note: I couldn't find a way of disabling the open recent menu item, which itself has a menu.
+To disable it (greyed out and non hoverable), I had to create a standard menu item.
+When there are recent items, I remove the disabled action and created the submenu.
 """
 
 from PySide6.QtWidgets import (
@@ -46,26 +49,29 @@ class LessonMainWindow(QMainWindow):
         menubar = self.menuBar()
 
         # File menu
-        file_menu = menubar.addMenu("File")
+        self.file_menu = menubar.addMenu("File")
 
         # Open action
         open_action = QAction("Open...", self)
         open_action.setShortcut("Ctrl+O")
         open_action.triggered.connect(self.open_lesson_browser)
-        file_menu.addAction(open_action)
+        self.file_menu.addAction(open_action)
 
-        # Open Recent submenu
-        self.recent_menu = QMenu("Open Recent", self)
-        self.recent_menu.setEnabled(False)  # Initially disabled
-        file_menu.addMenu(self.recent_menu)
+        # Open Recent - initially a disabled action, becomes submenu when populated
+        # This is the only way to get a greyed out menu. Greying out
+        self.recent_menu = None
+        self.recent_action = QAction("Open Recent", self)
+        self.recent_action.setEnabled(False)  # Initially disabled
+        self.file_menu.addAction(self.recent_action)
 
-        file_menu.addSeparator()
+        # Separator before Exit
+        self.separator_action = self.file_menu.addSeparator()
 
         # Exit action
         exit_action = QAction("Exit", self)
         exit_action.setShortcut("Ctrl+Q")
         exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
+        self.file_menu.addAction(exit_action)
 
     def open_lesson_browser(self):
         """Open the lesson browser dialog"""
@@ -104,19 +110,19 @@ class LessonMainWindow(QMainWindow):
         self.update_recent_menu()
 
     def update_recent_menu(self):
-        """Update the Open Recent submenu"""
-        # Clear existing menu items
-        self.recent_menu.clear()
-
+        """Update the Open Recent menu - converts between action and submenu as needed"""
         if self.recent_lessons:
-            # Enable the recent menu
-            self.recent_menu.setEnabled(True)
+            # Convert to submenu if not already
+            if self.recent_menu is None:
+                # Remove the disabled action
+                self.file_menu.removeAction(self.recent_action)
+                # Create and add the submenu (before the separator)
+                self.recent_menu = QMenu("Open Recent", self)
+                self.file_menu.insertMenu(self.separator_action, self.recent_menu)
 
-            # Add each recent lesson to the menu
+            self.recent_menu.clear()
             for lesson_name in self.recent_lessons:
-                # Find the lesson data
                 lesson_data = next((l for l in LESSONS if l["name"] == lesson_name), None)
-
                 if lesson_data:
                     # Format as "Name | Key | Type"
                     display_text = f"{lesson_data['name']} • {lesson_data['key']} • {lesson_data['type']}"
@@ -127,8 +133,14 @@ class LessonMainWindow(QMainWindow):
                         lambda _, data=lesson_data: self.open_recent_lesson(data)
                     )
         else:
-            # Disable the recent menu if empty
-            self.recent_menu.setEnabled(False)
+            # Convert back to disabled action if needed
+            if self.recent_menu is not None:
+                # Remove the submenu
+                self.file_menu.removeAction(self.recent_menu.menuAction())
+                self.recent_menu = None
+
+                # Re-add the disabled action (before the separator)
+                self.file_menu.insertAction(self.separator_action, self.recent_action)
 
     def open_recent_lesson(self, lesson_data):
         """Open a lesson directly from the recent menu (bypass dialog)"""
