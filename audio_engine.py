@@ -221,6 +221,9 @@ class AudioEngine(QObject):
         self.output_device = self.audio_sink.start()
         print("Audio sink started")
 
+        # Pre-fill the buffer to eliminate startup lag
+        self.push_audio_data()
+
         # Start timer to push audio data
         self.push_timer.start(50)  # Check every 50ms
 
