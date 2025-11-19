@@ -1,17 +1,15 @@
 """
-Guitar Lesson Browser - PySide6 Application
-A GUI for browsing and selecting guitar lessons with filtering and recent lessons tracking
+Guitar Lesson Browser - PySide6 Dialog
+A dialog for browsing and selecting guitar lessons with filtering
 """
 
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QToolBar, QPushButton, QTableWidget, QTableWidgetItem, QComboBox,
-    QHeaderView, QMenu, QLabel, QFrame
+    QApplication, QDialog, QWidget, QVBoxLayout, QHBoxLayout,
+    QPushButton, QTableWidget, QTableWidgetItem, QComboBox,
+    QHeaderView, QLabel, QFrame
 )
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QAction
 import sys
-from datetime import datetime
 
 
 # Sample lesson data
@@ -37,104 +35,85 @@ LESSONS = [
 ]
 
 
-class LessonBrowser(QMainWindow):
-    """Main window for browsing guitar lessons"""
-    
-    def __init__(self):
-        super().__init__()
+class LessonBrowser(QDialog):
+    """Dialog for browsing and selecting guitar lessons"""
+
+    # Signal emitted when a lesson is selected
+    lessonSelected = Signal(dict)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.all_lessons = LESSONS.copy()
-        self.recent_lessons = []
         self.current_filter = "All"
-        
+        self.selected_lesson = None  # Store selected lesson data
+
         self.setWindowTitle("Guitar Lesson Browser")
         self.resize(900, 600)
-        
+
         self.setup_ui()
         self.populate_table()
         
     def setup_ui(self):
         """Initialize the user interface"""
-        # Central widget
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-        
-        # Toolbar
-        self.create_toolbar()
-        
-        # Recent lessons section
-        self.recent_widget = self.create_recent_lessons_widget()
-        main_layout.addWidget(self.recent_widget)
-        
+        # Main layout for dialog
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(5)
+
+        # Category filter section
+        category_widget = self.create_category_filter()
+        main_layout.addWidget(category_widget)
+
         # Filters section
         filter_widget = self.create_filter_widget()
         main_layout.addWidget(filter_widget)
-        
+
         # Table
         self.table = self.create_table()
         main_layout.addWidget(self.table)
+
+        # Action buttons (Open/Cancel)
+        action_widget = self.create_action_buttons()
+        main_layout.addWidget(action_widget)
         
-    def create_toolbar(self):
-        """Create the toolbar with category filter buttons"""
-        toolbar = QToolBar("Main Toolbar")
-        toolbar.setMovable(False)
-        self.addToolBar(toolbar)
-        
-        # Add spacing
-        spacer = QWidget()
-        spacer.setFixedWidth(10)
-        toolbar.addWidget(spacer)
-        
+    def create_category_filter(self):
+        """Create the category filter buttons"""
+        frame = QFrame()
+        frame.setFrameShape(QFrame.StyledPanel)
+        frame.setMaximumHeight(60)
+
+        layout = QHBoxLayout(frame)
+
         # Category label
         label = QLabel("Category:")
-        toolbar.addWidget(label)
-        
+        label.setStyleSheet("font-weight: bold;")
+        layout.addWidget(label)
+
+        layout.addSpacing(10)
+
         # Category buttons
         self.btn_all = QPushButton("All")
         self.btn_all.setCheckable(True)
         self.btn_all.setChecked(True)
         self.btn_all.clicked.connect(lambda: self.filter_by_category("All"))
-        toolbar.addWidget(self.btn_all)
-        
+        layout.addWidget(self.btn_all)
+
         self.btn_triads = QPushButton("Triads")
         self.btn_triads.setCheckable(True)
         self.btn_triads.clicked.connect(lambda: self.filter_by_category("Triad"))
-        toolbar.addWidget(self.btn_triads)
-        
+        layout.addWidget(self.btn_triads)
+
         self.btn_scales = QPushButton("Scales")
         self.btn_scales.setCheckable(True)
         self.btn_scales.clicked.connect(lambda: self.filter_by_category("Scale"))
-        toolbar.addWidget(self.btn_scales)
-        
+        layout.addWidget(self.btn_scales)
+
         # Group buttons for mutual exclusivity
         self.category_buttons = [self.btn_all, self.btn_triads, self.btn_scales]
-        
+
         # Add stretch to push everything to the left
-        toolbar.addWidget(QWidget())
-        
-    def create_recent_lessons_widget(self):
-        """Create the recent lessons section"""
-        frame = QFrame()
-        frame.setFrameShape(QFrame.StyledPanel)
-        frame.setMaximumHeight(60)
-        
-        layout = QHBoxLayout(frame)
-        
-        label = QLabel("Recent:")
-        label.setStyleSheet("font-weight: bold;")
-        layout.addWidget(label)
-        
-        self.recent_combo = QComboBox()
-        self.recent_combo.setMinimumWidth(300)
-        self.recent_combo.addItem("No recent lessons")
-        self.recent_combo.setEnabled(False)
-        self.recent_combo.currentTextChanged.connect(self.load_recent_lesson)
-        layout.addWidget(self.recent_combo)
-        
         layout.addStretch()
-        
+
         return frame
         
     def create_filter_widget(self):
@@ -214,9 +193,39 @@ class LessonBrowser(QMainWindow):
         
         # Connect double-click to open lesson
         table.doubleClicked.connect(self.open_lesson)
-        
+
+        # Connect selection change to update action buttons
+        table.itemSelectionChanged.connect(self.on_selection_changed)
+
         return table
-        
+
+    def create_action_buttons(self):
+        """Create the Open and Cancel button bar"""
+        frame = QFrame()
+        frame.setFrameShape(QFrame.StyledPanel)
+        frame.setMaximumHeight(60)
+
+        layout = QHBoxLayout(frame)
+
+        # Add stretch to push buttons to the right
+        layout.addStretch()
+
+        # Cancel button
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setEnabled(False)
+        self.cancel_button.clicked.connect(self.cancel_selection)
+        layout.addWidget(self.cancel_button)
+
+        # Open button
+        self.open_button = QPushButton("Open")
+        self.open_button.setEnabled(False)
+        self.open_button.clicked.connect(self.open_lesson)
+        layout.addWidget(self.open_button)
+
+        layout.addSpacing(10)
+
+        return frame
+
     def filter_by_category(self, category):
         """Filter lessons by category button"""
         # Update button states (mutual exclusivity)
@@ -279,51 +288,53 @@ class LessonBrowser(QMainWindow):
             self.table.setItem(row, 3, QTableWidgetItem(lesson["difficulty"]))
             
     def open_lesson(self):
-        """Open the selected lesson and add to recent lessons"""
+        """Open the selected lesson"""
         current_row = self.table.currentRow()
         if current_row >= 0:
             lesson_name = self.table.item(current_row, 0).text()
-            
-            # Add to recent lessons (keep last 10)
-            if lesson_name in self.recent_lessons:
-                self.recent_lessons.remove(lesson_name)
-            self.recent_lessons.insert(0, lesson_name)
-            self.recent_lessons = self.recent_lessons[:10]
-            
-            self.update_recent_display()
-            
-            # In a real app, this would load the lesson
-            print(f"Opening lesson: {lesson_name}")
-            
-    def load_recent_lesson(self, lesson_name):
-        """Load a lesson from the recent dropdown"""
-        if lesson_name and lesson_name != "No recent lessons":
-            print(f"Loading recent lesson: {lesson_name}")
-            # In a real app, this would load the lesson
-            
-    def update_recent_display(self):
-        """Update the recent lessons dropdown"""
-        # Block signals to prevent triggering load_recent_lesson
-        self.recent_combo.blockSignals(True)
-        
-        self.recent_combo.clear()
-        
-        if self.recent_lessons:
-            self.recent_combo.addItems(self.recent_lessons)
-            self.recent_combo.setEnabled(True)
-        else:
-            self.recent_combo.addItem("No recent lessons")
-            self.recent_combo.setEnabled(False)
-            
-        # Unblock signals
-        self.recent_combo.blockSignals(False)
+
+            # Find the full lesson data
+            lesson_data = next((l for l in self.all_lessons if l["name"] == lesson_name), None)
+
+            if lesson_data:
+                # Store selected lesson
+                self.selected_lesson = lesson_data
+
+                # Emit signal with lesson data
+                self.lessonSelected.emit(lesson_data)
+
+                # Accept the dialog (closes with success)
+                self.accept()
+
+    def on_selection_changed(self):
+        """Handle table selection changes to enable/disable action buttons"""
+        has_selection = self.table.currentRow() >= 0
+        self.open_button.setEnabled(has_selection)
+        self.cancel_button.setEnabled(has_selection)
+
+    def cancel_selection(self):
+        """Cancel the dialog without selecting a lesson"""
+        # Reject the dialog (closes with cancel)
+        self.reject()
 
 
 def main():
+    """Standalone test for the lesson browser dialog"""
     app = QApplication(sys.argv)
-    window = LessonBrowser()
-    window.show()
-    sys.exit(app.exec())
+    dialog = LessonBrowser()
+
+    # Connect signal for testing
+    dialog.lessonSelected.connect(
+        lambda lesson: print(f"Selected: {lesson['name']} | {lesson['key']} | {lesson['type']} | {lesson['difficulty']}")
+    )
+
+    result = dialog.exec()
+    if result == QDialog.Accepted:
+        print(f"Dialog accepted with lesson: {dialog.selected_lesson}")
+    else:
+        print("Dialog cancelled")
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":
