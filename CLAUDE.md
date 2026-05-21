@@ -6,6 +6,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 For loading .wav files, use the wavefile.py file directly rather than scipy.io.wavfile.read.
 The avoids having to package scipy with the final distribution.
 
+### Path Resolution
+Never use `os.path.abspath("relative/path")` or `Path.cwd() / "relative/path"` for locating project resources. VS Code sets the working directory to the repo root (`/Users/john/Documents/Software/Fretboard`), not the `Modular/` subdirectory where the code lives, so cwd-relative paths break when launched from the debugger.
+
+Always resolve paths relative to `__file__`:
+```python
+# In Modular/models/lesson_loader.py — one level up from models/ to reach lessons/
+Path(__file__).parent.parent / "lessons"
+
+# In Modular/ui/fretboard_view.py — one level up from ui/ to reach Modular/
+os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "fretboard.html")
+
+# In Modular/audio_engine.py — same directory as the file
+os.path.join(os.path.dirname(os.path.abspath(__file__)), audio_folder)
+```
+
 ### Python Virtual Environment
 This project uses a Python virtual environment located at `/Users/john/python_venv/venv_3.12/bin`.
 When running Python commands from the terminal, first activate the virtual environment:

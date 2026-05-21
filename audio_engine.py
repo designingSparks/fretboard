@@ -23,7 +23,10 @@ class AudioEngine(QObject):
     def __init__(self, audio_folder='clean', samplerate=44100, strum_delay_ms=10, parent=None):
         super().__init__(parent)
 
-        # Configuration
+        # Configuration — resolve relative to this file so the path is correct
+        # regardless of the working directory the process was launched from.
+        if not os.path.isabs(audio_folder):
+            audio_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), audio_folder)
         self.audio_folder = audio_folder
         self.samplerate = samplerate
         self.strum_delay_ms = strum_delay_ms

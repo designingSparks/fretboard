@@ -30,8 +30,9 @@ class LessonLoader:
         """
         self.lessons_dir = Path(lessons_dir)
         if not self.lessons_dir.is_absolute():
-            # Make it relative to the current working directory
-            self.lessons_dir = Path.cwd() / self.lessons_dir
+            # Resolve relative to this file's directory, not cwd, so the path
+            # is correct regardless of where the process was launched from.
+            self.lessons_dir = Path(__file__).parent.parent / self.lessons_dir
 
         self._lesson_cache: Dict[str, Lesson] = {}
 

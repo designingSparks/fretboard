@@ -23,7 +23,7 @@ class FretboardView(QWebEngineView):
         super().__init__(parent)
 
         # Load the fretboard HTML
-        html_path = os.path.abspath("fretboard.html")
+        html_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "fretboard.html")
         self.load(QUrl.fromLocalFile(html_path))
         self.setZoomFactor(0.9)
 

@@ -1,5 +1,3 @@
-import { cMajorPentatonic, gMajorPentatonic, aMinorPentatonic, cMajor } from './scales.js';
-
 // --- 1. Configuration ---
 const SHOW_DOTS = true; // Set to false to hide fret markers
 const NUM_FRETS = 24;
@@ -789,10 +787,9 @@ window.clearNoteHighlights = function() {
 
 
 // --- Animation Trigger ---
-document.getElementById('bend-note-button').addEventListener('click', () => {
-    // Animate the 'A' note on the 10th fret of the 'B' string (string index 1)
-    // animateNoteBendSingle(1, 10);
-    // animateNoteBendSingle(2, 9);
-    // Example of a double bend: Bending the G string at the 9th fret (E note) up a whole tone to F#.
-    animateNoteBendWholeTone(2,9);
-});
+const bendButton = document.getElementById('bend-note-button');
+if (bendButton) {
+    bendButton.addEventListener('click', () => {
+        animateNoteBendWholeTone(2, 9);
+    });
+}

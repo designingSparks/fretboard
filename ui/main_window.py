@@ -3,9 +3,12 @@ Main application window with toolbar.
 Based on qtoolbar_demo.py, adapted for fretboard player integration.
 """
 
+import os
 from PySide6.QtWidgets import QMainWindow, QToolBar, QMenu, QWidget
 from PySide6.QtGui import QIcon, QAction, QFont, QActionGroup
 from PySide6.QtCore import Qt, Signal, QSize
+
+_ICONS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "icons")
 
 
 class MainWindow(QMainWindow):
@@ -121,7 +124,7 @@ class MainWindow(QMainWindow):
         
         # Play/Stop toggle action
         self.play_stop_action = QAction(
-            QIcon("icons/play.svg"),
+            QIcon(os.path.join(_ICONS_DIR, "play.svg")),
             "Play",
             self
         )
@@ -170,7 +173,7 @@ class MainWindow(QMainWindow):
         self.speed_action = speed_action  # Keep reference to update text
 
         # Loop action (toggle button)
-        self.loop_action = QAction(QIcon("icons/loop.svg"), "Loop", self)
+        self.loop_action = QAction(QIcon(os.path.join(_ICONS_DIR, "loop.svg")), "Loop", self)
         self.loop_action.setCheckable(True)
         self.loop_action.toggled.connect(self._on_loop_toggled)
         self.loop_action.setShortcut("L")
@@ -180,7 +183,7 @@ class MainWindow(QMainWindow):
         
         # === OPTIONS MENU (moved to first group) ===
         
-        options_action = QAction(QIcon("icons/options.svg"), "Options", self)
+        options_action = QAction(QIcon(os.path.join(_ICONS_DIR, "options.svg")), "Options", self)
         options_menu = QMenu(self)
         
         # Auto-play option with updated text
@@ -209,14 +212,14 @@ class MainWindow(QMainWindow):
         # === NAVIGATION CONTROLS ===
 
         # Previous part
-        self.prev_action = QAction(QIcon("icons/back.svg"), "Previous Part", self)
+        self.prev_action = QAction(QIcon(os.path.join(_ICONS_DIR, "back.svg")), "Previous Part", self)
         self.prev_action.triggered.connect(self._on_previous)
         self.prev_action.setShortcut(Qt.Key_Left)
         self.prev_action.setEnabled(False)  # Disabled until lesson is loaded
         toolbar.addAction(self.prev_action)
 
         # Next part
-        self.next_action = QAction(QIcon("icons/forward.svg"), "Next Part", self)
+        self.next_action = QAction(QIcon(os.path.join(_ICONS_DIR, "forward.svg")), "Next Part", self)
         self.next_action.triggered.connect(self._on_next)
         self.next_action.setShortcut(Qt.Key_Right)
         self.next_action.setEnabled(False)  # Disabled until lesson is loaded
@@ -236,13 +239,13 @@ class MainWindow(QMainWindow):
         if self.is_playing:
             # Currently playing, so stop
             self.is_playing = False
-            self.play_stop_action.setIcon(QIcon("icons/play.svg"))
+            self.play_stop_action.setIcon(QIcon(os.path.join(_ICONS_DIR, "play.svg")))
             self.play_stop_action.setText("Play")
             self.stop_clicked.emit()
         else:
             # Currently stopped, so play
             self.is_playing = True
-            self.play_stop_action.setIcon(QIcon("icons/stop.svg"))
+            self.play_stop_action.setIcon(QIcon(os.path.join(_ICONS_DIR, "stop.svg")))
             self.play_stop_action.setText("Stop")
             self.play_clicked.emit()
 
@@ -292,10 +295,10 @@ class MainWindow(QMainWindow):
         """
         self.is_playing = is_playing
         if is_playing:
-            self.play_stop_action.setIcon(QIcon("icons/stop.svg"))
+            self.play_stop_action.setIcon(QIcon(os.path.join(_ICONS_DIR, "stop.svg")))
             self.play_stop_action.setText("Stop")
         else:
-            self.play_stop_action.setIcon(QIcon("icons/play.svg"))
+            self.play_stop_action.setIcon(QIcon(os.path.join(_ICONS_DIR, "play.svg")))
             self.play_stop_action.setText("Play")
 
     def enable_navigation_buttons(self, prev_enabled, next_enabled):
