@@ -30,12 +30,18 @@ class ConfigManager():
                 self.settings = tomllib.load(f)
                 logger.debug(f"\n{pformat(self.settings)}")
 
+            # Ensure RecentLessons section exists
+            if 'RecentLessons' not in self.settings:
+                self.settings['RecentLessons'] = {'lessons': []}
+                self.save_settings()
+
         #Create new config file
         else:
             logger.debug('Creating new config file: {}'.format(self.filename))
             self.settings = {
-                'Basic': {'last_load_dir': ''}, 
-                'OptionChain': {'show_weekly': False, 'strikes_desc': True}, 
+                'Basic': {'last_load_dir': ''},
+                'OptionChain': {'show_weekly': False, 'strikes_desc': True},
+                'RecentLessons': {'lessons': []},
             }
             # self.save_settings()
             with open(self.filename, 'wb') as f:

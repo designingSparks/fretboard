@@ -237,12 +237,36 @@ class FretboardPlayer(QObject):
 if __name__ == "__main__":
     import sys
     from models.lesson_loader import LessonLoader
+    from models.lesson_scanner import scan_lessons
+    from settings import ConfigManager
+    from ui.lesson_browser import LessonBrowser
 
     os.environ["QTWEBENGINE_REMOTE_DEBUGGING"] = "8080"
     app = QApplication(sys.argv)
 
+    # Initialize settings
+    config = ConfigManager()
+
+    # Scan lessons on startup
+    print("\n" + "="*70)
+    print("SCANNING LESSONS")
+    print("="*70)
+    lessons_metadata = scan_lessons()
+    print(f"Found {len(lessons_metadata)} lessons")
+    print("="*70 + "\n")
+
     # Create main window with toolbar
     main_window = MainWindow()
+
+    # Load recent lessons from settings
+    recent_lessons_data = config.settings.get('RecentLessons', {}).get('lessons', [])
+    # Convert from list of dicts to list of tuples (filename, name)
+    recent_lessons = [
+        (item['filename'], item['name'])
+        for item in recent_lessons_data
+        if isinstance(item, dict) and 'filename' in item and 'name' in item
+    ]
+    main_window.load_recent_lessons(recent_lessons)
 
     # Create fretboard view
     fretboard_view = FretboardView()
@@ -283,6 +307,54 @@ if __name__ == "__main__":
 
     # Connect subtitle_changed signal to update fretboard subtitle
     player.subtitle_changed.connect(fretboard_view.set_subtitle)
+
+    # Helper function to load a lesson by filename
+    def load_lesson_by_filename(filename):
+        """Load a lesson by filename and update recent lessons."""
+        lesson = loader.load_lesson(filename)
+        if lesson:
+            # Stop playback if playing
+            if audio_engine.is_playing:
+                audio_engine.stop_playback()
+
+            # Load the lesson
+            player.load_lesson(lesson)
+
+            # Update title
+            fretboard_view.set_title(lesson.name)
+
+            # Add to recent lessons
+            main_window.add_recent_lesson(filename, lesson.name)
+
+            # Save recent lessons to settings
+            recent_list = main_window.get_recent_lessons()
+            config.settings['RecentLessons'] = {
+                'lessons': [
+                    {'filename': fn, 'name': nm}
+                    for fn, nm in recent_list
+                ]
+            }
+            config.save_settings()
+
+            print(f"✓ Successfully loaded: {lesson.name}")
+        else:
+            print(f"⚠️  Error: Could not load lesson '{filename}'")
+
+    # Helper function to show lesson browser
+    def show_lesson_browser():
+        """Show the lesson browser dialog."""
+        browser = LessonBrowser(main_window)
+        browser.set_lessons(lessons_metadata)
+
+        # Connect signal to load lesson when selected
+        browser.lessonSelected.connect(load_lesson_by_filename)
+
+        # Show the dialog
+        browser.exec()
+
+    # Connect File menu signals
+    main_window.open_lesson_clicked.connect(show_lesson_browser)
+    main_window.recent_lesson_clicked.connect(load_lesson_by_filename)
 
     # Load default lesson (after all signal connections are set up)
     loader = LessonLoader()

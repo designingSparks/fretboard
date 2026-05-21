@@ -30,6 +30,10 @@ class MainWindow(QMainWindow):
     auto_play_toggled = Signal(bool)
     auto_advance_toggled = Signal(bool)
 
+    # File menu signals
+    open_lesson_clicked = Signal()
+    recent_lesson_clicked = Signal(str)  # Emits lesson filename
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Guitar Learning Tool")
@@ -42,8 +46,42 @@ class MainWindow(QMainWindow):
         self.auto_advance = False
         self.current_speed = 1.0
 
-        # Create toolbar
+        # Recent lessons state
+        self.recent_lessons = []  # List of tuples: (filename, name)
+        self.recent_menu = None
+        self.recent_action = None
+        self.separator_action = None
+
+        # Create menu and toolbar
+        self._create_menu()
         self._create_toolbar()
+
+    def _create_menu(self):
+        """Create the menu bar with File menu."""
+        menubar = self.menuBar()
+
+        # File menu
+        self.file_menu = menubar.addMenu("File")
+
+        # Open action
+        open_action = QAction("Open...", self)
+        open_action.setShortcut("Ctrl+O")
+        open_action.triggered.connect(self._on_open_lesson)
+        self.file_menu.addAction(open_action)
+
+        # Open Recent - initially a disabled action, becomes submenu when populated
+        self.recent_action = QAction("Open Recent", self)
+        self.recent_action.setEnabled(False)  # Initially disabled
+        self.file_menu.addAction(self.recent_action)
+
+        # Separator before Exit
+        self.separator_action = self.file_menu.addSeparator()
+
+        # Exit action
+        exit_action = QAction("Exit", self)
+        exit_action.setShortcut("Ctrl+Q")
+        exit_action.triggered.connect(self.close)
+        self.file_menu.addAction(exit_action)
 
     def _create_toolbar(self):
         """Create and configure the main toolbar."""
@@ -238,6 +276,10 @@ class MainWindow(QMainWindow):
         self.auto_advance = checked
         self.auto_advance_toggled.emit(checked)
 
+    def _on_open_lesson(self):
+        """Handle File > Open menu action."""
+        self.open_lesson_clicked.emit()
+
     # === PUBLIC METHODS ===
 
     def update_playback_state(self, is_playing):
@@ -275,3 +317,77 @@ class MainWindow(QMainWindow):
             widget: QWidget to display in the central area
         """
         self.setCentralWidget(widget)
+
+    def load_recent_lessons(self, recent_list):
+        """
+        Load recent lessons from settings.
+
+        Args:
+            recent_list: List of tuples (filename, name)
+        """
+        self.recent_lessons = recent_list[:10]  # Limit to 10
+        self.update_recent_menu()
+
+    def add_recent_lesson(self, filename, name):
+        """
+        Add a lesson to the recent lessons list.
+
+        Args:
+            filename: Lesson filename (without .py)
+            name: Display name of the lesson
+        """
+        # Remove if already in list
+        self.recent_lessons = [
+            (fn, nm) for fn, nm in self.recent_lessons if fn != filename
+        ]
+
+        # Add to front
+        self.recent_lessons.insert(0, (filename, name))
+
+        # Limit to 10
+        self.recent_lessons = self.recent_lessons[:10]
+
+        # Update menu
+        self.update_recent_menu()
+
+    def get_recent_lessons(self):
+        """
+        Get the current recent lessons list.
+
+        Returns:
+            List of tuples (filename, name)
+        """
+        return self.recent_lessons
+
+    def update_recent_menu(self):
+        """Update the Open Recent menu - converts between action and submenu as needed."""
+        if self.recent_lessons:
+            # Convert to submenu if not already
+            if self.recent_menu is None:
+                # Remove the disabled action
+                self.file_menu.removeAction(self.recent_action)
+
+                # Create and add the submenu (before the separator)
+                self.recent_menu = QMenu("Open Recent", self)
+                self.file_menu.insertMenu(self.separator_action, self.recent_menu)
+
+            # Clear and populate the menu
+            self.recent_menu.clear()
+            for filename, name in self.recent_lessons:
+                # Format as "Name"
+                display_text = name
+
+                # Create action and connect
+                action = self.recent_menu.addAction(display_text)
+                action.triggered.connect(
+                    lambda _, fn=filename: self.recent_lesson_clicked.emit(fn)
+                )
+        else:
+            # Convert back to disabled action if needed
+            if self.recent_menu is not None:
+                # Remove the submenu
+                self.file_menu.removeAction(self.recent_menu.menuAction())
+                self.recent_menu = None
+
+                # Re-add the disabled action (before the separator)
+                self.file_menu.insertAction(self.separator_action, self.recent_action)

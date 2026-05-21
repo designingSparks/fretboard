@@ -111,11 +111,12 @@ class Lesson:
         parts: List of Part objects that make up this lesson
         description: Optional description of what the lesson teaches
         author: Optional author name
+        difficulty: Optional difficulty level (e.g., 'Beginner', 'Intermediate', 'Advanced')
         use_sharp: If True, display notes with sharp notation (C#, D#, etc.)
                    If False, display notes with flat notation (Db, Eb, etc.)
                    Defaults to True for backward compatibility
                    TODO: Future enhancement - allow per-Part override
-        metadata: Optional dict for additional info (tags, difficulty, etc.)
+        metadata: Optional dict for additional info (tags, etc.)
 
     Example:
         >>> part1 = Part(name="Position 4", ...)
@@ -130,6 +131,7 @@ class Lesson:
     parts: List[Part]
     description: str = ""
     author: str = ""
+    difficulty: str = ""  # e.g., 'Beginner', 'Intermediate', 'Advanced'
     use_sharp: bool = True  # Default to sharp notation for backward compatibility
     metadata: Dict[str, Any] = field(default_factory=dict)
 
