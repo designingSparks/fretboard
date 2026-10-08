@@ -6,6 +6,7 @@ riff section, or exercise that can be played independently.
 """
 
 from dataclasses import dataclass, field
+import math
 from typing import List, Tuple, Dict, Any, Union
 
 
@@ -28,6 +29,11 @@ class Part:
         highlight_classes: Optional dict mapping note names to CSS classes
                           e.g., {'C': 'highlight1', 'E': 'highlight2'}
         description: Optional string describing this part
+        circle_sequence_elements: Enclose each playback row's notes in a rounded outline
+        wrapping_distance: Gap from note markers to the outline, in CSS pixels (>= 0)
+        fillet_corners: Round the enclosing polygon's corners when outlines are enabled
+        fillet_radius: Requested corner radius in CSS pixels; capped at marker radius
+                       plus wrapping_distance to preserve clearance around every note
 
     Examples:
         >>> # Single note sequence
@@ -49,6 +55,10 @@ class Part:
     play_sequence: List[Union[List, Tuple]]
     highlight_classes: Dict[str, str] = field(default_factory=dict)
     description: str = ""
+    circle_sequence_elements: bool = False
+    wrapping_distance: float = 8.0
+    fillet_corners: bool = False
+    fillet_radius: float = 24.0
 
     def __post_init__(self):
         """Validate the part data."""
@@ -60,6 +70,15 @@ class Part:
 
         if not self.play_sequence:
             raise ValueError(f"Part '{self.name}' must have play_sequence")
+
+        for setting in ('circle_sequence_elements', 'fillet_corners'):
+            if not isinstance(getattr(self, setting), bool):
+                raise ValueError(f"{setting} must be a boolean")
+        for setting in ('wrapping_distance', 'fillet_radius'):
+            value = getattr(self, setting)
+            if (isinstance(value, bool) or not isinstance(value, (int, float))
+                    or not math.isfinite(value) or value < 0):
+                raise ValueError(f"{setting} must be a finite, non-negative number")
 
         # Validate string names
         valid_strings = {'e', 'B', 'G', 'D', 'A', 'E'}

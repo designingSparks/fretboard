@@ -99,7 +99,12 @@ class FretboardPlayer(QObject):
             self.fretboard_view.display_notes(
                 part.notes_to_highlight,
                 part.highlight_classes,
-                use_sharp=use_sharp
+                use_sharp=use_sharp,
+                play_sequence=part.play_sequence,
+                circle_sequence_elements=part.circle_sequence_elements,
+                wrapping_distance=part.wrapping_distance,
+                fillet_corners=part.fillet_corners,
+                fillet_radius=part.fillet_radius,
             )
 
         print(f"Loaded part: {part.name}")
@@ -227,7 +232,12 @@ class FretboardPlayer(QObject):
             self.fretboard_view.display_notes(
                 self._current_part.notes_to_highlight,
                 self._current_part.highlight_classes,
-                use_sharp=use_sharp
+                use_sharp=use_sharp,
+                play_sequence=self._current_part.play_sequence,
+                circle_sequence_elements=self._current_part.circle_sequence_elements,
+                wrapping_distance=self._current_part.wrapping_distance,
+                fillet_corners=self._current_part.fillet_corners,
+                fillet_radius=self._current_part.fillet_radius,
             )
             # Emit subtitle signal now that the view is loaded
             self.subtitle_changed.emit(self._current_part.name)

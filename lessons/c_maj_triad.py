@@ -23,6 +23,10 @@ part1 = Part(
     name="Strings G, B, e",
     notes_to_highlight=PART1_NOTES,
     play_sequence=PART1_SEQUENCE,
+    circle_sequence_elements=True,
+    wrapping_distance=8,
+    fillet_corners=True,
+    fillet_radius=24,
     highlight_classes={'C': 'highlight1'},  # Optional: highlight specific notes
     description='',
 )
@@ -42,6 +46,10 @@ part2 = Part(
     name="Strings D, G, B",
     notes_to_highlight=PART2_NOTES,
     play_sequence=PART2_SEQUENCE,
+    circle_sequence_elements=True,
+    wrapping_distance=8,
+    fillet_corners=True,
+    fillet_radius=24,
     highlight_classes={'C': 'highlight1'},  # Optional: highlight specific notes
     description='',
 )
@@ -64,6 +72,10 @@ part3 = Part(
     name="Strings A, D, G",
     notes_to_highlight=PART3_NOTES,
     play_sequence=PART3_SEQUENCE,
+    circle_sequence_elements=True,
+    wrapping_distance=8,
+    fillet_corners=True,
+    fillet_radius=24,
     highlight_classes={'C': 'highlight1'},
     description='',
 )
@@ -86,6 +98,10 @@ part4 = Part(
     name="Strings E, A, D",
     notes_to_highlight=PART4_NOTES,
     play_sequence=PART4_SEQUENCE,
+    circle_sequence_elements=True,
+    wrapping_distance=8,
+    fillet_corners=True,
+    fillet_radius=24,
     highlight_classes={'C': 'highlight1'},
     description='',
 )

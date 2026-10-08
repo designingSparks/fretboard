@@ -62,11 +62,13 @@ part1 = Part(
     notes_to_highlight=PART1_HIGHLIGHT,
     play_sequence=PART1_PLAY,
     highlight_classes={'C': 'highlight1'},  # Optional: highlight specific notes
-    metadata={
-        'difficulty': 'beginner',  # beginner, intermediate, advanced
-        'tempo_bpm': 60,
-        'notes': 'Practice slowly at first'
-    }
+    description='Practice slowly at first',
+    # Enable to wrap EACH sequence row's notes in its own rounded outline.
+    # Works in any key, including open strings and widely spaced notes.
+    circle_sequence_elements=False,
+    wrapping_distance=8,  # Gap outside note markers in CSS pixels; must be >= 0
+    fillet_corners=True,  # False keeps sharp polygon corners
+    fillet_radius=24,  # CSS pixels; capped at marker radius + wrapping_distance
 )
 
 # ============================================================================

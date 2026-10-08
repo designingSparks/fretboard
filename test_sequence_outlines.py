@@ -1,0 +1,193 @@
+"""Run: python -m unittest test_sequence_outlines -v
+
+Set RUN_FRETBOARD_BROWSER_TESTS=1 to also exercise the real Qt web view.
+"""
+
+import json
+import os
+import unittest
+from dataclasses import replace
+
+from PySide6.QtCore import QEventLoop, QTimer
+from PySide6.QtWebEngineCore import QWebEngineUrlRequestInterceptor
+from PySide6.QtWidgets import QApplication
+
+from models.lesson_model import Part
+from models.lesson_loader import LessonLoader
+from ui.fretboard_view import FretboardView
+
+
+class OfflineRequests(QWebEngineUrlRequestInterceptor):
+    def interceptRequest(self, info):
+        if info.requestUrl().scheme() in ('http', 'https'):
+            info.block(True)
+
+
+@unittest.skipUnless(os.environ.get('RUN_FRETBOARD_BROWSER_TESTS') == '1',
+                     'Set RUN_FRETBOARD_BROWSER_TESTS=1 for Qt browser checks')
+class SequenceOutlineBrowserTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.app = QApplication.instance() or QApplication([])
+        cls.view = FretboardView()
+        cls.interceptor = OfflineRequests(cls.view)
+        cls.view.page().profile().setUrlRequestInterceptor(cls.interceptor)
+        cls.view.resize(1850, 600)
+        loop = QEventLoop()
+        loaded = []
+        cls.view.loadFinished.connect(lambda ok: (loaded.append(ok), loop.quit()))
+        QTimer.singleShot(10000, loop.quit)
+        cls.view.show()
+        loop.exec()
+        if not loaded or not loaded[0]:
+            raise RuntimeError('Fretboard did not load')
+        cls.loader = LessonLoader()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.view.close()
+
+    def javascript(self, code):
+        loop = QEventLoop()
+        results = []
+        self.view.page().runJavaScript(code, lambda value: (results.append(value), loop.quit()))
+        QTimer.singleShot(5000, loop.quit)
+        loop.exec()
+        self.assertTrue(results, 'JavaScript callback timed out')
+        return results[0]
+
+    def display(self, part):
+        self.view.display_notes(
+            part.notes_to_highlight, part.highlight_classes,
+            play_sequence=part.play_sequence,
+            circle_sequence_elements=part.circle_sequence_elements,
+            wrapping_distance=part.wrapping_distance,
+            fillet_corners=part.fillet_corners,
+            fillet_radius=part.fillet_radius,
+        )
+        # Wait for layout/animation-frame work, including on offscreen Qt.
+        loop = QEventLoop()
+        QTimer.singleShot(150, loop.quit)
+        loop.exec()
+
+    def snapshot(self):
+        return json.loads(self.javascript("""JSON.stringify(
+            [...document.querySelectorAll('[data-sequence-group]')].map(group => {
+                const bounds = group.getBBox();
+                return {
+                    notes: +group.getAttribute('data-note-count'),
+                    hull: +group.getAttribute('data-hull-count'),
+                    width: bounds.width, height: bounds.height,
+                    x: bounds.x, y: bounds.y,
+                    path: group.getAttribute('d'),
+                };
+            })
+        )"""))
+
+    def test_all_c_major_parts_and_another_key(self):
+        lesson = self.loader.load_lesson('c_maj_triad')
+        parts = lesson.parts + [replace(
+            self.loader.load_lesson('g_maj_triad').parts[0],
+            circle_sequence_elements=True,
+        )]
+        for part in parts:
+            with self.subTest(part=part.name):
+                self.display(part)
+                groups = self.snapshot()
+                self.assertEqual(len(groups), len(part.play_sequence))
+                for group, row in zip(groups, part.play_sequence):
+                    self.assertEqual(group['notes'], len(set(row[:-1])))
+                    self.assertLessEqual(group['hull'], group['notes'])
+                    self.assertGreaterEqual(group['x'], 0)
+                    self.assertGreaterEqual(group['y'], 0)
+
+    def test_spread_notes_missing_highlights_and_wrapping_distance(self):
+        part = Part('Wide', [('e', 0)], [[('e', 0), ('e', 12), 1000]],
+                    circle_sequence_elements=True, wrapping_distance=8,
+                    fillet_corners=True, fillet_radius=24)
+        self.display(part)
+        small = self.snapshot()[0]
+        self.assertEqual(small['notes'], 2)  # Missing highlight was displayed.
+        self.assertGreater(small['width'], small['height'] * 5)
+        self.assertAlmostEqual(small['height'], 46, delta=1)
+        self.display(replace(part, wrapping_distance=20))
+        large = self.snapshot()[0]
+        self.assertAlmostEqual(large['height'] - small['height'], 24, delta=0.1)
+        self.javascript('window.dispatchEvent(new Event("resize"))')
+        self.display(replace(part, wrapping_distance=20))
+        self.assertEqual(self.snapshot()[0], large)
+
+    def test_single_shared_repeated_notes_rests_and_disabled_switch(self):
+        part = Part('Groups', [('e', 0)], [
+            [('e', 0), ('B', 1), 1000],
+            [('B', 1), ('e', 0), 1000],
+            [('e', 0), ('e', 0), 1000],
+            [1000],
+        ], circle_sequence_elements=True)
+        self.display(part)
+        groups = self.snapshot()
+        self.assertEqual(len(groups), 3)
+        self.assertEqual(groups[0], groups[1])
+        self.assertEqual(groups[2]['notes'], 1)
+        self.javascript('clearNoteHighlights()')
+        self.assertEqual(self.snapshot(), groups)
+        self.display(replace(part, circle_sequence_elements=False))
+        self.assertEqual(self.snapshot(), [])
+
+class SequenceOutlineModelTests(unittest.TestCase):
+    def test_model_validation_and_default(self):
+        part = Part('Default', [('e', 0)], [[('e', 0), 1000]])
+        self.assertFalse(part.circle_sequence_elements)
+        self.assertEqual(part.wrapping_distance, 8)
+        self.assertFalse(part.fillet_corners)
+        self.assertEqual(part.fillet_radius, 24)
+        for setting in ('wrapping_distance', 'fillet_radius'):
+            for value in (-1, float('nan'), float('inf'), '8', True):
+                with self.subTest(setting=setting, value=value), self.assertRaises(ValueError):
+                    replace(part, **{setting: value})
+        with self.assertRaises(ValueError):
+            replace(part, fillet_corners='yes')
+        self.assertEqual(replace(part, wrapping_distance=0).wrapping_distance, 0)
+        self.assertEqual(replace(part, fillet_radius=0).fillet_radius, 0)
+
+    def test_bridge_keeps_rows_and_adds_missing_markers(self):
+        class RecordingView:
+            def page(self):
+                return self
+
+            def runJavaScript(self, script):
+                self.script = script
+
+        view = RecordingView()
+        FretboardView.display_notes(
+            view, [('e', 0)], play_sequence=[
+                [('e', 0), ('B', 1), 1000],
+                [('B', 1), ('e', 0), 1000],
+                [('G', 5), ('G', 5), 500], [500],
+            ], circle_sequence_elements=True, wrapping_distance=12,
+            fillet_corners=True, fillet_radius=10,
+        )
+        args = json.loads('[' + view.script[len('displayNotes('):-2] + ']')
+        notes, groups, distance = json.loads(args[0]), args[1], args[2]
+        self.assertEqual(len(notes), 3)
+        self.assertEqual([len(group) for group in groups], [2, 2, 1])
+        self.assertEqual(groups[0], list(reversed(groups[1])))
+        self.assertEqual(distance, 12)
+        self.assertEqual(args[3:], [True, 10])
+        FretboardView.display_notes(view, [('e', 0)])
+        args = json.loads('[' + view.script[len('displayNotes('):-2] + ']')
+        self.assertEqual(args[1], [])
+        self.assertEqual(args[3:], [False, 24])
+
+    def test_lessons_and_template_load(self):
+        from lessons import _template
+        self.assertIsNotNone(_template.lesson)
+        loader = LessonLoader()
+        for name in loader.get_available_lesson_files():
+            self.assertIsNotNone(loader.load_lesson(name), name)
+        self.assertTrue(all(part.circle_sequence_elements and part.fillet_corners
+                            for part in loader.load_lesson('c_maj_triad').parts))
+
+
+if __name__ == '__main__':
+    unittest.main()

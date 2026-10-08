@@ -33,6 +33,15 @@
             top: 0; left: 0; width: 100%; height: 100%;
             z-index: 1; /* Place SVG strings between frets (z-index: 0) and notes (z-index: 2) */
         }
+        #sequence-outline-container {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+            pointer-events: none;
+            z-index: 1;
+        }
         table {
             border-collapse: collapse;
             border-spacing: 0;
@@ -195,9 +204,11 @@
         </table>
         <!-- SVG container for strings. It will be populated by main.js -->
         <svg id="string-svg-container"></svg>
+        <svg id="sequence-outline-container" aria-hidden="true"></svg>
     </div>
 </div>
 
+<script src="sequence_outlines.js"></script>
 <script src="main.js"></script>
 
 </body>

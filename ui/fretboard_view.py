@@ -36,7 +36,9 @@ class FretboardView(QWebEngineView):
         print("Fretboard view loaded successfully")
         self.view_loaded.emit()
 
-    def display_notes(self, notes_to_highlight, highlight_classes=None, use_sharp=True):
+    def display_notes(self, notes_to_highlight, highlight_classes=None, use_sharp=True,
+                      play_sequence=None, circle_sequence_elements=False,
+                      wrapping_distance=8.0, fillet_corners=False, fillet_radius=24.0):
         """
         Display notes on the fretboard in an inactive state.
 
@@ -45,15 +47,34 @@ class FretboardView(QWebEngineView):
             highlight_classes: Dict mapping note names to CSS highlight classes
                              e.g., {'C': 'highlight1', 'E': 'highlight2'}
             use_sharp: If True, use sharp notation (C#, D#). If False, use flat notation (Db, Eb)
+            play_sequence: Rows of note positions followed by a duration
+            circle_sequence_elements: Draw a separate rounded outline for each row
+            wrapping_distance: Gap outside note markers, in CSS pixels
+            fillet_corners: Round the enclosing polygon's corners
+            fillet_radius: Requested corner radius, in CSS pixels
         """
         if highlight_classes is None:
             highlight_classes = {}
+
+        groups = []
+        display_positions = list(dict.fromkeys(notes_to_highlight))
+        if circle_sequence_elements:
+            for row in play_sequence or []:
+                positions = list(dict.fromkeys(
+                    tuple(note) for note in row[:-1]
+                    if isinstance(note, (tuple, list)) and len(note) == 2
+                ))
+                if positions:
+                    groups.append([{'stringName': s, 'fret': f} for s, f in positions])
+                    for position in positions:
+                        if position not in display_positions:
+                            display_positions.append(position)
 
         # Select the appropriate note mapping based on sharp/flat preference
         fretboard_notes = FRETBOARD_NOTES_SHARP if use_sharp else FRETBOARD_NOTES_FLAT
 
         scale_data = []
-        for s, f in notes_to_highlight:
+        for s, f in display_positions:
             string_num = STRING_ID.index(s)
             note_name = fretboard_notes[string_num][f]
 
@@ -73,8 +94,13 @@ class FretboardView(QWebEngineView):
                 'hasFlat': has_flat
             })
 
-        json_data = json.dumps(scale_data)
-        self.page().runJavaScript(f"displayNotes('{json_data}');")
+        # Send notes and groups together so a redraw never retains an old part's outlines.
+        json_data = json.dumps(json.dumps(scale_data))
+        groups_data = json.dumps(groups)
+        self.page().runJavaScript(
+            f"displayNotes({json_data}, {groups_data}, {json.dumps(wrapping_distance)}, "
+            f"{json.dumps(fillet_corners)}, {json.dumps(fillet_radius)});"
+        )
 
     def highlight_notes(self, notes):
         """

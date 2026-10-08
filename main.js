@@ -686,11 +686,14 @@ window.handlePythonBendRequest = function(stringIndex, fret, halftones) {
  * e.g. Cmaj. It prints all notes of the pattern in the inactive state initially.
  * @param {string} jsonData - A JSON string representing the scale pattern.
  */
-window.displayNotes = function(jsonData) {
+window.displayNotes = function(jsonData, sequenceGroups = [], wrappingDistance = 8,
+                               filletCorners = false, filletRadius = 24) {
     console.log("Received scale pattern from Python.");
     try {
         const pattern = JSON.parse(jsonData);
         drawScalePattern(pattern);
+        setSequenceOutlines(sequenceGroups, wrappingDistance, filletCorners, filletRadius);
+        drawStringsAsSVG();
     } catch (e) {
         console.error("Failed to parse scale pattern from Python:", e);
     }
