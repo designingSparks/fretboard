@@ -687,11 +687,13 @@ window.handlePythonBendRequest = function(stringIndex, fret, halftones) {
  * @param {string} jsonData - A JSON string representing the scale pattern.
  */
 window.displayNotes = function(jsonData, sequenceGroups = [], wrappingDistance = 8,
-                               filletCorners = false, filletRadius = 24) {
+                               filletCorners = false, filletRadius = 24, sequenceSteps = [],
+                               chordLabelTitle = 'Triad playing') {
     console.log("Received scale pattern from Python.");
     try {
         const pattern = JSON.parse(jsonData);
         drawScalePattern(pattern);
+        renderChordSequence(sequenceSteps, chordLabelTitle);
         setSequenceOutlines(sequenceGroups, wrappingDistance, filletCorners, filletRadius);
         drawStringsAsSVG();
     } catch (e) {
@@ -700,10 +702,18 @@ window.displayNotes = function(jsonData, sequenceGroups = [], wrappingDistance =
 };
 
 
+function clearChordRootHighlights() {
+    document.querySelectorAll('[data-chord-root]').forEach(note => {
+        note.classList.remove('highlight1');
+        delete note.dataset.chordRoot;
+    });
+}
+
 /* Similar to highlightNote() but can highlight multiple notes
 */
 window.highlightNotes = function(jsonData) {
     console.log("Received highlight request from Python.");
+    clearChordRootHighlights();
     
     // First, reset all notes on the fretboard to their inactive (faded) state.
     document.querySelectorAll('.note, .open-string-note').forEach(note => {
@@ -733,6 +743,10 @@ window.highlightNotes = function(jsonData) {
                 }
                 const noteElement = document.querySelector(noteSelector);
                 if (noteElement) {
+                    if (noteInfo.isRoot && !noteElement.classList.contains('highlight1')) {
+                        noteElement.classList.add('highlight1');
+                        noteElement.dataset.chordRoot = 'true';
+                    }
                     noteElement.classList.remove('inactive');
                 }
             }
@@ -782,6 +796,8 @@ window.highlightNote = function(stringName, fret) {
  * Called from Python when playback is stopped. 
  */
 window.clearNoteHighlights = function() {
+    clearChordSelection();
+    clearChordRootHighlights();
     document.querySelectorAll('.note, .open-string-note').forEach(note => {
         note.classList.add('inactive');
     });

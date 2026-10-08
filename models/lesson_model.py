@@ -8,6 +8,7 @@ riff section, or exercise that can be played independently.
 from dataclasses import dataclass, field
 import math
 from typing import List, Tuple, Dict, Any, Union
+from models.sequence_step import parse_sequence_row
 
 
 @dataclass
@@ -25,9 +26,11 @@ class Part:
         play_sequence: The actual sequence of notes to play. Format:
                       - Single notes: [[('A', 3), 500], [('A', 5), 500], ...]
                       - Chords: [[('e', 0), ('B', 1), ('G', 0), 1000], ...]
+                      - Labelled chords: [[('e', 3), ('B', 3), ('G', 4), 'G', 1000], ...]
                       Last element in each sublist is duration in milliseconds
         highlight_classes: Optional dict mapping note names to CSS classes
                           e.g., {'C': 'highlight1', 'E': 'highlight2'}
+        highlight_chord_root: Use highlight1 for the current labelled chord's root
         description: Optional string describing this part
         circle_sequence_elements: Enclose each playback row's notes in a rounded outline
         wrapping_distance: Gap from note markers to the outline, in CSS pixels (>= 0)
@@ -59,6 +62,7 @@ class Part:
     wrapping_distance: float = 8.0
     fillet_corners: bool = False
     fillet_radius: float = 24.0
+    highlight_chord_root: bool = False
 
     def __post_init__(self):
         """Validate the part data."""
@@ -70,8 +74,10 @@ class Part:
 
         if not self.play_sequence:
             raise ValueError(f"Part '{self.name}' must have play_sequence")
+        for row in self.play_sequence:
+            parse_sequence_row(row)
 
-        for setting in ('circle_sequence_elements', 'fillet_corners'):
+        for setting in ('circle_sequence_elements', 'fillet_corners', 'highlight_chord_root'):
             if not isinstance(getattr(self, setting), bool):
                 raise ValueError(f"{setting} must be a boolean")
         for setting in ('wrapping_distance', 'fillet_radius'):
@@ -101,11 +107,7 @@ class Part:
         Returns:
             Total duration in milliseconds
         """
-        total = 0
-        for item in self.play_sequence:
-            # Last element is always duration
-            total += item[-1]
-        return total
+        return sum(parse_sequence_row(row).duration_ms for row in self.play_sequence)
 
     def get_note_count(self) -> int:
         """
@@ -136,6 +138,7 @@ class Lesson:
                    Defaults to True for backward compatibility
                    TODO: Future enhancement - allow per-Part override
         metadata: Optional dict for additional info (tags, etc.)
+        chord_label_title: Caption above the chord buttons; empty hides the caption
 
     Example:
         >>> part1 = Part(name="Position 4", ...)
@@ -153,11 +156,15 @@ class Lesson:
     difficulty: str = ""  # e.g., 'Beginner', 'Intermediate', 'Advanced'
     use_sharp: bool = True  # Default to sharp notation for backward compatibility
     metadata: Dict[str, Any] = field(default_factory=dict)
+    chord_label_title: str = "Triad playing"
 
     def __post_init__(self):
         """Validate the lesson data."""
         if not self.name:
             raise ValueError("Lesson name cannot be empty")
+
+        if not isinstance(self.chord_label_title, str):
+            raise ValueError("chord_label_title must be a string")
 
         if not self.parts:
             raise ValueError(f"Lesson '{self.name}' must have at least one part")

@@ -5,9 +5,11 @@ Handles all JavaScript communication and fretboard visualization.
 
 import os
 import json
+import re
 from PySide6.QtCore import QUrl, Signal, Slot
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from constants import FRETBOARD_NOTES_SHARP, FRETBOARD_NOTES_FLAT, STRING_ID
+from models.sequence_step import parse_sequence_row
 
 
 class FretboardView(QWebEngineView):
@@ -38,7 +40,8 @@ class FretboardView(QWebEngineView):
 
     def display_notes(self, notes_to_highlight, highlight_classes=None, use_sharp=True,
                       play_sequence=None, circle_sequence_elements=False,
-                      wrapping_distance=8.0, fillet_corners=False, fillet_radius=24.0):
+                      wrapping_distance=8.0, fillet_corners=False, fillet_radius=24.0,
+                      chord_label_title="Triad playing", highlight_chord_root=False):
         """
         Display notes on the fretboard in an inactive state.
 
@@ -47,28 +50,39 @@ class FretboardView(QWebEngineView):
             highlight_classes: Dict mapping note names to CSS highlight classes
                              e.g., {'C': 'highlight1', 'E': 'highlight2'}
             use_sharp: If True, use sharp notation (C#, D#). If False, use flat notation (Db, Eb)
-            play_sequence: Rows of note positions followed by a duration
+            play_sequence: Rows of notes, an optional chord name, and a duration
             circle_sequence_elements: Draw a separate rounded outline for each row
             wrapping_distance: Gap outside note markers, in CSS pixels
             fillet_corners: Round the enclosing polygon's corners
             fillet_radius: Requested corner radius, in CSS pixels
+            chord_label_title: Lesson-defined caption above the chord buttons
+            highlight_chord_root: Color the current labelled chord's root with highlight1
         """
         if highlight_classes is None:
             highlight_classes = {}
 
         groups = []
+        sequence_steps = []
         display_positions = list(dict.fromkeys(notes_to_highlight))
-        if circle_sequence_elements:
-            for row in play_sequence or []:
-                positions = list(dict.fromkeys(
-                    tuple(note) for note in row[:-1]
-                    if isinstance(note, (tuple, list)) and len(note) == 2
-                ))
-                if positions:
-                    groups.append([{'stringName': s, 'fret': f} for s, f in positions])
-                    for position in positions:
-                        if position not in display_positions:
-                            display_positions.append(position)
+        for row in play_sequence or []:
+            step = parse_sequence_row(row)
+            positions = list(dict.fromkeys(step.notes))
+            notes = [{'stringName': s, 'fret': f} for s, f in positions]
+            if highlight_chord_root and step.chord_name:
+                root = re.match(r'^[A-G][#b]?', step.chord_name.replace('♯', '#').replace('♭', 'b'))
+                if root:
+                    for note, (s, f) in zip(notes, positions):
+                        string_num = STRING_ID.index(s)
+                        note['isRoot'] = root.group() in (
+                            FRETBOARD_NOTES_SHARP[string_num][f],
+                            FRETBOARD_NOTES_FLAT[string_num][f],
+                        )
+            sequence_steps.append({'notes': notes, 'chordName': step.chord_name})
+            if circle_sequence_elements and positions:
+                groups.append(notes)
+            for position in positions:
+                if position not in display_positions:
+                    display_positions.append(position)
 
         # Select the appropriate note mapping based on sharp/flat preference
         fretboard_notes = FRETBOARD_NOTES_SHARP if use_sharp else FRETBOARD_NOTES_FLAT
@@ -99,8 +113,17 @@ class FretboardView(QWebEngineView):
         groups_data = json.dumps(groups)
         self.page().runJavaScript(
             f"displayNotes({json_data}, {groups_data}, {json.dumps(wrapping_distance)}, "
-            f"{json.dumps(fillet_corners)}, {json.dumps(fillet_radius)});"
+            f"{json.dumps(fillet_corners)}, {json.dumps(fillet_radius)}, "
+            f"{json.dumps(sequence_steps)}, {json.dumps(chord_label_title)});"
         )
+
+    def highlight_sequence_step(self, index):
+        """Select the same row's chord label and notes in one browser update."""
+        self.page().runJavaScript(f"highlightSequenceStep({json.dumps(index)});")
+
+    def set_playback_state(self, state):
+        """Update chord inspection availability and reset/restore selection."""
+        self.page().runJavaScript(f"setChordPlaybackState({json.dumps(state)});")
 
     def highlight_notes(self, notes):
         """

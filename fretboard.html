@@ -15,6 +15,7 @@
             padding: 20px;
         }
         .fretboard-container {
+            --heading-font-size: 24px;
             font-family: 'Montserrat', sans-serif;
             font-size: 14px;
             line-height: 1.2;
@@ -23,6 +24,90 @@
         .fretboard-header {
             /* Normal flow - will push content below */
             padding-left: 60px; /* Align with nut area */
+            display: flex;
+            align-items: center;
+            gap: 16px 64px;
+            max-width: calc(100vw - 56px);
+            box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+        .fretboard-heading {
+            flex: 0 0 auto;
+        }
+        .chord-panel {
+            flex: 0 1 auto;
+            min-inline-size: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+            margin: 0 0 0 auto;
+            padding: 8px 12px 12px;
+            border: 1px solid #b8c3cf;
+            border-radius: 10px;
+        }
+        .chord-panel[hidden] {
+            display: none;
+        }
+        .chord-label-title {
+            padding: 0 6px;
+            font-size: 14px;
+            color: #666;
+        }
+        @media (max-width: 760px) {
+            .fretboard-header {
+                flex-wrap: wrap;
+            }
+            .fretboard-heading {
+                flex: 0 1 auto;
+                min-width: 0;
+            }
+        }
+        .chord-labels {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .chord-labels[hidden] {
+            display: none;
+        }
+        .chord-label {
+            display: inline-grid;
+            place-items: center;
+            min-width: 60px;
+            padding: 8px 14px;
+            border: 0;
+            border-radius: 8px;
+            background: transparent;
+            color: #333;
+            font-family: inherit;
+            font-size: var(--heading-font-size);
+            font-weight: 400;
+            line-height: 1.2;
+            cursor: pointer;
+        }
+        .chord-label span, .chord-label::after {
+            grid-area: 1 / 1;
+        }
+        .chord-label::after {
+            /* Reserve the bold width so selecting a chord never shifts its neighbours. */
+            content: attr(data-label);
+            font-weight: 700;
+            visibility: hidden;
+        }
+        .chord-label:hover:not(:disabled):not(.selected) {
+            background: #edf4fc;
+        }
+        .chord-label.selected {
+            background: #1d65bf;
+            color: #fff;
+            font-weight: 700;
+        }
+        .chord-label:focus-visible {
+            outline: 2px solid #1d65bf;
+            outline-offset: 3px;
+        }
+        .chord-label:disabled {
+            cursor: default;
+            opacity: 1;
         }
         .fretboard-diagram {
             position: relative; /* Contain the absolutely positioned SVG */
@@ -173,7 +258,7 @@
 
         /* --- Title and Subtitle --- */
         .fretboard-title {
-            font-size: 24px;
+            font-size: var(--heading-font-size);
             font-weight: 700;
             color: #333;
             margin-bottom: 5px;
@@ -182,7 +267,7 @@
             font-size: 16px;
             font-weight: 400;
             color: #666;
-            margin-bottom: 15px;
+            margin-bottom: 0;
         }
 
     </style>
@@ -192,8 +277,14 @@
 <div class="fretboard-container">
     <!-- Header section (normal flow) -->
     <div class="fretboard-header">
-        <div class="fretboard-title"> </div>
-        <div class="fretboard-subtitle"> </div>
+        <div class="fretboard-heading">
+            <div class="fretboard-title"> </div>
+            <div class="fretboard-subtitle"> </div>
+        </div>
+        <fieldset id="chord-panel" class="chord-panel" hidden>
+            <legend id="chord-label-title" class="chord-label-title">Triad playing</legend>
+            <div id="chord-labels" class="chord-labels" role="group" aria-label="Chord sequence" hidden></div>
+        </fieldset>
     </div>
 
     <!-- Fretboard rendering area (isolated positioning) -->
@@ -209,6 +300,7 @@
 </div>
 
 <script src="sequence_outlines.js"></script>
+<script src="chord_labels.js"></script>
 <script src="main.js"></script>
 
 </body>

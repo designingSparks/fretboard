@@ -8,6 +8,7 @@ import numpy as np
 from PySide6.QtCore import QObject, QTimer, Qt, Slot, Signal
 from PySide6.QtMultimedia import QAudioSink, QAudioFormat, QMediaDevices
 import wavfile
+from models.sequence_step import parse_sequence_row
 
 
 class AudioEngine(QObject):
@@ -18,6 +19,7 @@ class AudioEngine(QObject):
 
     # Signals
     playback_stopped = Signal()  # Emitted when playback stops
+    playback_started = Signal()
     highlight_note_index = Signal(int)  # Emitted when a note index should be highlighted
 
     def __init__(self, audio_folder='clean', samplerate=44100, strum_delay_ms=10, parent=None):
@@ -37,6 +39,7 @@ class AudioEngine(QObject):
         self.sound_list = None  # Pre-mixed audio buffers as byte arrays
         self.play_index = 0
         self.is_playing = False
+        self._playback_generation = 0
         self.current_sample_position = 0
 
         # Audio components
@@ -116,16 +119,9 @@ class AudioEngine(QObject):
         self.note_duration = []
 
         for sublist in play_seq:
-            pluck_list = []
-            for item in sublist:
-                if isinstance(item, tuple):
-                    string_name, fret = item
-                    if string_name in open_string_midi:
-                        midi_note = open_string_midi[string_name] + fret
-                        pluck_list.append(midi_note)
-                elif isinstance(item, int):  # Duration value
-                    self.note_duration.append(item)
-            self.midi.append(pluck_list)
+            step = parse_sequence_row(sublist)
+            self.midi.append([open_string_midi[s] + f for s, f in step.notes])
+            self.note_duration.append(step.duration_ms)
 
         print(f"Initialized MIDI notes: {self.midi}")
 
@@ -136,6 +132,11 @@ class AudioEngine(QObject):
         self.sound_list = []
 
         for idx, item in enumerate(self.midi):
+            if not item:
+                # Rest rows retain their sequence index and duration.
+                samples = int(self.samplerate * self.note_duration[idx] / 1000)
+                self.sound_list.append(np.zeros(samples, dtype=np.int16).tobytes())
+                continue
             note_data_list = []
             for note_id in item:
                 data = self._load_audio_file(note_id)
@@ -217,12 +218,14 @@ class AudioEngine(QObject):
 
         print("Starting playback...")
         self.is_playing = True
+        self._playback_generation += 1
         self.play_index = 0
         self.current_sample_position = 0
 
         # Start the audio sink
         self.output_device = self.audio_sink.start()
         print("Audio sink started")
+        self.playback_started.emit()
 
         # Pre-fill the buffer to eliminate startup lag
         self.push_audio_data()
@@ -238,6 +241,7 @@ class AudioEngine(QObject):
 
         print("Stopping playback...")
         self.is_playing = False
+        self._playback_generation += 1
 
         # Stop the timer and audio sink
         self.push_timer.stop()
@@ -282,7 +286,8 @@ class AudioEngine(QObject):
 
             # Schedule the UI update to sync with actual audio
             index = self.play_index
-            QTimer.singleShot(int(latency_ms), lambda: self._emit_highlight_signal(index))
+            generation = self._playback_generation
+            QTimer.singleShot(int(latency_ms), lambda: self._emit_highlight_signal(index, generation))
 
         # Get current buffer
         current_buffer = self.sound_list[self.play_index]
@@ -301,7 +306,7 @@ class AudioEngine(QObject):
             self.play_index += 1
             self.current_sample_position = 0
 
-    def _emit_highlight_signal(self, index):
+    def _emit_highlight_signal(self, index, generation):
         """
         Emit signal to highlight a note index.
         Called with latency compensation to sync with actual audio.
@@ -309,5 +314,5 @@ class AudioEngine(QObject):
         Args:
             index: The play sequence index to highlight
         """
-        if self.is_playing:
+        if self.is_playing and generation == self._playback_generation:
             self.highlight_note_index.emit(index)

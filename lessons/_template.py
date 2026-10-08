@@ -51,9 +51,10 @@ PART1_PLAY = [
 ]
 
 # For chords/triads, include multiple notes in one step:
+# Add an optional chord name BEFORE the duration to display a clickable label.
 # PART1_PLAY = [
-#     [('e', 0), ('B', 1), ('G', 0), 1000],  # Play these 3 notes together
-#     [('e', 3), ('B', 5), ('G', 5), 1000],  # Then these 3
+#     [('e', 0), ('B', 1), ('G', 0), 'C', 1000],  # Play these 3 notes together
+#     [('e', 3), ('B', 5), ('G', 5), 'C', 1000],  # Another voicing, separate label
 # ]
 
 # Create the Part object
@@ -100,6 +101,7 @@ part2 = Part(
 # REQUIRED: Export a 'lesson' variable
 lesson = Lesson(
     name="My Custom Lesson",
+    chord_label_title="Triad playing",  # Caption above chord buttons; "" hides it
     parts=[part1, part2],  # Add all your parts here
     description="A detailed description of what this lesson teaches",
     author="Your Name",

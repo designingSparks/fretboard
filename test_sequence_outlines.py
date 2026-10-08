@@ -64,6 +64,7 @@ class SequenceOutlineBrowserTests(unittest.TestCase):
             wrapping_distance=part.wrapping_distance,
             fillet_corners=part.fillet_corners,
             fillet_radius=part.fillet_radius,
+            highlight_chord_root=part.highlight_chord_root,
         )
         # Wait for layout/animation-frame work, including on offscreen Qt.
         loop = QEventLoop()
@@ -100,6 +101,45 @@ class SequenceOutlineBrowserTests(unittest.TestCase):
                     self.assertLessEqual(group['hull'], group['notes'])
                     self.assertGreaterEqual(group['x'], 0)
                     self.assertGreaterEqual(group['y'], 0)
+
+    def test_g_c_d_root_follows_each_triad_and_clears_on_stop(self):
+        from constants import FRETBOARD_NOTES_SHARP, STRING_ID
+        from models.sequence_step import parse_sequence_row
+
+        def roots():
+            return json.loads(self.javascript("""JSON.stringify(
+                [...document.querySelectorAll('.highlight1')].map(note => [
+                    GUITAR_TUNING[+note.parentElement.dataset.string].name,
+                    +note.dataset.fret
+                ])
+            )"""))
+
+        for part in self.loader.load_lesson('g_c_d_major_triads').parts:
+            self.display(part)
+            self.assertEqual(roots(), [])
+            self.javascript('setChordPlaybackState("playing")')
+            for index, row in enumerate(part.play_sequence):
+                step = parse_sequence_row(row)
+                with self.subTest(part=part.name, index=index):
+                    self.javascript(f'highlightSequenceStep({index})')
+                    expected = [[s, f] for s, f in step.notes
+                                if FRETBOARD_NOTES_SHARP[STRING_ID.index(s)][f] == step.chord_name]
+                    self.assertEqual(len(expected), 1)
+                    self.assertEqual(roots(), expected)
+            self.javascript('setChordPlaybackState("stopped")')
+            self.assertEqual(roots(), [])
+            self.javascript('document.querySelectorAll(".chord-label")[1].click()')
+            step = parse_sequence_row(part.play_sequence[1])
+            self.assertEqual(roots(), [[s, f] for s, f in step.notes
+                                      if FRETBOARD_NOTES_SHARP[STRING_ID.index(s)][f] == 'C'])
+
+        # Fixed root coloring in existing lessons survives playback resets.
+        self.display(self.loader.load_lesson('g_maj_triad').parts[0])
+        fixed_roots = roots()
+        self.assertTrue(fixed_roots)
+        self.javascript('setChordPlaybackState("playing"); highlightSequenceStep(0); '
+                        'setChordPlaybackState("stopped")')
+        self.assertEqual(roots(), fixed_roots)
 
     def test_spread_notes_missing_highlights_and_wrapping_distance(self):
         part = Part('Wide', [('e', 0)], [[('e', 0), ('e', 12), 1000]],
@@ -173,11 +213,11 @@ class SequenceOutlineModelTests(unittest.TestCase):
         self.assertEqual([len(group) for group in groups], [2, 2, 1])
         self.assertEqual(groups[0], list(reversed(groups[1])))
         self.assertEqual(distance, 12)
-        self.assertEqual(args[3:], [True, 10])
+        self.assertEqual(args[3:5], [True, 10])
         FretboardView.display_notes(view, [('e', 0)])
         args = json.loads('[' + view.script[len('displayNotes('):-2] + ']')
         self.assertEqual(args[1], [])
-        self.assertEqual(args[3:], [False, 24])
+        self.assertEqual(args[3:5], [False, 24])
 
     def test_lessons_and_template_load(self):
         from lessons import _template

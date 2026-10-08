@@ -44,6 +44,7 @@ class FretboardPlayer(QObject):
         # Connect signals
         self.fretboard_view.view_loaded.connect(self.on_fretboard_loaded)
         self.audio_engine.highlight_note_index.connect(self.on_highlight_note_index)
+        self.audio_engine.playback_started.connect(self.on_playback_started)
         self.audio_engine.playback_stopped.connect(self.on_playback_stopped)
 
     def load_lesson(self, lesson, part_index=0):
@@ -87,6 +88,9 @@ class FretboardPlayer(QObject):
             print("Error: Cannot load None part")
             return
 
+        if self.audio_engine.is_playing:
+            self.audio_engine.stop_playback()
+
         self._current_part = part
 
         # Load audio sequence
@@ -105,6 +109,9 @@ class FretboardPlayer(QObject):
                 wrapping_distance=part.wrapping_distance,
                 fillet_corners=part.fillet_corners,
                 fillet_radius=part.fillet_radius,
+                highlight_chord_root=part.highlight_chord_root,
+                chord_label_title=(self.current_lesson.chord_label_title
+                                   if self.current_lesson else "Triad playing"),
             )
 
         print(f"Loaded part: {part.name}")
@@ -199,16 +206,14 @@ class FretboardPlayer(QObject):
         if not self._current_part:
             return
 
-        if index >= len(self._current_part.play_sequence):
+        if not 0 <= index < len(self._current_part.play_sequence):
             return
 
-        notes_to_highlight = []
-        for item in self._current_part.play_sequence[index]:
-            if isinstance(item, tuple):
-                notes_to_highlight.append(item)
+        self.fretboard_view.highlight_sequence_step(index)
 
-        self.fretboard_view.highlight_notes(notes_to_highlight)
-        print(f"Highlighting notes for index {index}: {notes_to_highlight}")
+    @Slot()
+    def on_playback_started(self):
+        self.fretboard_view.set_playback_state('playing')
 
     @Slot()
     def on_playback_stopped(self):
@@ -216,7 +221,7 @@ class FretboardPlayer(QObject):
         Handle playback stopped signal from audio engine.
         Clears highlights on the fretboard.
         """
-        self.fretboard_view.clear_note_highlights()
+        self.fretboard_view.set_playback_state('stopped')
 
     @Slot()
     def on_fretboard_loaded(self):
@@ -238,9 +243,14 @@ class FretboardPlayer(QObject):
                 wrapping_distance=self._current_part.wrapping_distance,
                 fillet_corners=self._current_part.fillet_corners,
                 fillet_radius=self._current_part.fillet_radius,
+                highlight_chord_root=self._current_part.highlight_chord_root,
+                chord_label_title=(self.current_lesson.chord_label_title
+                                   if self.current_lesson else "Triad playing"),
             )
             # Emit subtitle signal now that the view is loaded
             self.subtitle_changed.emit(self._current_part.name)
+            if self.audio_engine.is_playing:
+                self.fretboard_view.set_playback_state('playing')
 
 
 # --- Application entry point ---
