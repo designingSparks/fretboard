@@ -308,13 +308,15 @@ print_part_code(parts[0], 'part1', 'PART1_NOTES', 'PART1_SEQUENCE')
 
 **Output:**
 ```python
+from models.sequence_step import SequenceStep
+
 PART1_NOTES = [
     ('G', 7), ('D', 5), ('B', 6), ('G', 5),
 ]
 
 PART1_SEQUENCE = [
-    [('G', 7), ('D', 5), 300],
-    [('G', 7), ('D', 5), 300],
+    SequenceStep(notes=(('G', 7), ('D', 5)), duration_ms=300),
+    SequenceStep(notes=(('G', 7), ('D', 5)), duration_ms=300),
 ]
 
 part1 = Part(
@@ -362,7 +364,7 @@ Extract all unique notes from specified bars.
 Create a play sequence from bars.
 
 **Returns:**
-- `List[List]`: Play sequence in format `[[note(s), duration], ...]`
+- `List[SequenceStep]`: Named steps with `notes` and `duration_ms` fields.
 
 ## Quick Workflow: Generate Lesson Code
 

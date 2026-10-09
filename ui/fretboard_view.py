@@ -50,7 +50,7 @@ class FretboardView(QWebEngineView):
             highlight_classes: Dict mapping note names to CSS highlight classes
                              e.g., {'C': 'highlight1', 'E': 'highlight2'}
             use_sharp: If True, use sharp notation (C#, D#). If False, use flat notation (Db, Eb)
-            play_sequence: Rows of notes, an optional chord name, and a duration
+            play_sequence: SequenceStep objects (legacy note/duration rows also accepted)
             circle_sequence_elements: Draw a separate rounded outline for each row
             wrapping_distance: Gap outside note markers, in CSS pixels
             fillet_corners: Round the enclosing polygon's corners

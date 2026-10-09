@@ -11,10 +11,12 @@ Note Format:
 - String names: 'e' (high), 'B', 'G', 'D', 'A', 'E' (low)
 - Fret numbers: 0-24 (0 = open string)
 - Tuples: (string_name, fret_number)
-- Duration: milliseconds (e.g., 500 = half second)
+- SequenceStep: named notes, duration_ms, and optional chord_name, shape, position_group
+- duration_ms: milliseconds (e.g., 500 = half second)
 """
 
 from models.lesson_model import Part, Lesson
+from models.sequence_step import SequenceStep
 
 # ============================================================================
 # CONFIGURATION
@@ -38,23 +40,26 @@ PART1_HIGHLIGHT = [
 ]
 
 # Sequence of notes to actually play
-# Format for single notes: [[note_tuple, duration], ...]
+# Single notes use a one-item tuple: notes=(('A', 3),)
 PART1_PLAY = [
-    [('A', 3), TON],  # A string, 3rd fret, hold for TON milliseconds
-    [('A', 5), TON],
-    [('D', 2), TON],
-    [('D', 3), TON],
-    [('D', 5), TON],
-    [('G', 2), TON],
-    [('G', 4), TON],
-    [('G', 5), TON],
+    SequenceStep(notes=(('A', 3),), duration_ms=TON),  # A string, 3rd fret, hold for TON milliseconds
+    SequenceStep(notes=(('A', 5),), duration_ms=TON),
+    SequenceStep(notes=(('D', 2),), duration_ms=TON),
+    SequenceStep(notes=(('D', 3),), duration_ms=TON),
+    SequenceStep(notes=(('D', 5),), duration_ms=TON),
+    SequenceStep(notes=(('G', 2),), duration_ms=TON),
+    SequenceStep(notes=(('G', 4),), duration_ms=TON),
+    SequenceStep(notes=(('G', 5),), duration_ms=TON),
 ]
 
 # For chords/triads, include multiple notes in one step:
-# Add an optional chord name BEFORE the duration to display a clickable label.
+# Add chord_name to display a clickable label; shape and position_group are metadata.
+# Braces add a smaller line below the chord, e.g. chord_name='G_{3-4}'.
 # PART1_PLAY = [
-#     [('e', 0), ('B', 1), ('G', 0), 'C', 1000],  # Play these 3 notes together
-#     [('e', 3), ('B', 5), ('G', 5), 'C', 1000],  # Another voicing, separate label
+#     SequenceStep(notes=(('e', 3), ('B', 3), ('G', 4)),
+#                  duration_ms=1000, chord_name='G', shape='E', position_group=1),
+#     SequenceStep(notes=(('e', 3), ('B', 5), ('G', 5)),
+#                  duration_ms=1000, chord_name='C', shape='A', position_group=1),
 # ]
 
 # Create the Part object
@@ -83,8 +88,8 @@ PART2_HIGHLIGHT = [
 ]
 
 PART2_PLAY = [
-    [('e', 8), TON],
-    [('e', 10), TON],
+    SequenceStep(notes=(('e', 8),), duration_ms=TON),
+    SequenceStep(notes=(('e', 10),), duration_ms=TON),
     # ... add more notes
 ]
 
@@ -112,17 +117,18 @@ lesson = Lesson(
 )
 
 # ============================================================================
-# ALTERNATIVE 1: Import existing scales/triads
+# ALTERNATIVE 1: Import an existing note pattern
 # ============================================================================
 
 # Instead of defining notes inline, you can import from scales.py:
 #
-# from scales import C_MAJOR_POS4_HIGHLIGHT, C_MAJOR_POS4_PLAY
+# from scales import C_MAJOR_POS4_HIGHLIGHT
+# from lesson_utils import create_play_sequence
 #
 # part1 = Part(
 #     name="Position 4",
 #     notes_to_highlight=C_MAJOR_POS4_HIGHLIGHT,
-#     play_sequence=C_MAJOR_POS4_PLAY
+#     play_sequence=create_play_sequence(C_MAJOR_POS4_HIGHLIGHT, duration=500)
 # )
 
 # ============================================================================

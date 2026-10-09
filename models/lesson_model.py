@@ -7,8 +7,8 @@ riff section, or exercise that can be played independently.
 
 from dataclasses import dataclass, field
 import math
-from typing import List, Tuple, Dict, Any, Union
-from models.sequence_step import parse_sequence_row
+from typing import List, Tuple, Dict, Any
+from models.sequence_step import SequenceStep, parse_sequence_row
 
 
 @dataclass
@@ -23,11 +23,9 @@ class Part:
         name: Display name for this part (e.g., "Position 4 - Ascending")
         notes_to_highlight: List of (string, fret) tuples to display on fretboard
                            These are shown in grey/inactive state
-        play_sequence: The actual sequence of notes to play. Format:
-                      - Single notes: [[('A', 3), 500], [('A', 5), 500], ...]
-                      - Chords: [[('e', 0), ('B', 1), ('G', 0), 1000], ...]
-                      - Labelled chords: [[('e', 3), ('B', 3), ('G', 4), 'G', 1000], ...]
-                      Last element in each sublist is duration in milliseconds
+        play_sequence: SequenceStep objects with named notes, duration_ms, and optional
+                       chord_name, shape, and position_group fields. Legacy lists are
+                       accepted and converted to SequenceStep when the Part is created.
         highlight_classes: Optional dict mapping note names to CSS classes
                           e.g., {'C': 'highlight1', 'E': 'highlight2'}
         highlight_chord_root: Use highlight1 for the current labelled chord's root
@@ -43,19 +41,21 @@ class Part:
         >>> part = Part(
         ...     name="C Major Scale",
         ...     notes_to_highlight=[('A', 3), ('A', 5), ('D', 2)],
-        ...     play_sequence=[[('A', 3), 500], [('A', 5), 500], [('D', 2), 500]]
+        ...     play_sequence=[SequenceStep(notes=(note,), duration_ms=500)
+        ...                    for note in [('A', 3), ('A', 5), ('D', 2)]]
         ... )
 
         >>> # Chord sequence
         >>> part = Part(
         ...     name="C Major Triad",
         ...     notes_to_highlight=[('e', 0), ('B', 1), ('G', 0)],
-        ...     play_sequence=[[('e', 0), ('B', 1), ('G', 0), 1000]]
+        ...     play_sequence=[SequenceStep(notes=(('e', 0), ('B', 1), ('G', 0)),
+        ...                                 duration_ms=1000, chord_name='C')]
         ... )
     """
     name: str
     notes_to_highlight: List[Tuple[str, int]]
-    play_sequence: List[Union[List, Tuple]]
+    play_sequence: List[SequenceStep]
     highlight_classes: Dict[str, str] = field(default_factory=dict)
     description: str = ""
     circle_sequence_elements: bool = False
@@ -74,8 +74,7 @@ class Part:
 
         if not self.play_sequence:
             raise ValueError(f"Part '{self.name}' must have play_sequence")
-        for row in self.play_sequence:
-            parse_sequence_row(row)
+        self.play_sequence = [parse_sequence_row(row) for row in self.play_sequence]
 
         for setting in ('circle_sequence_elements', 'fillet_corners', 'highlight_chord_root'):
             if not isinstance(getattr(self, setting), bool):

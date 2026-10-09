@@ -64,7 +64,7 @@
         .chord-labels {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 8px 6.4px;
         }
         .chord-labels[hidden] {
             display: none;
@@ -72,8 +72,10 @@
         .chord-label {
             display: inline-grid;
             place-items: center;
-            min-width: 60px;
-            padding: 8px 14px;
+            align-content: start;
+            row-gap: 2px;
+            min-width: 48px;
+            padding: 8px 11.2px;
             border: 0;
             border-radius: 8px;
             background: transparent;
@@ -84,8 +86,20 @@
             line-height: 1.2;
             cursor: pointer;
         }
-        .chord-label span, .chord-label::after {
+        .chord-label-main, .chord-label::after {
             grid-area: 1 / 1;
+        }
+        .chord-label-subtext, .chord-label[data-subtext]::before {
+            grid-area: 2 / 1;
+            font-size: 0.55em;
+            line-height: 1.2;
+            white-space: pre-wrap;
+        }
+        .chord-label[data-subtext]::before {
+            /* Reserve the subtext's bold width as well as the main label's. */
+            content: attr(data-subtext);
+            font-weight: 700;
+            visibility: hidden;
         }
         .chord-label::after {
             /* Reserve the bold width so selecting a chord never shifts its neighbours. */
@@ -104,6 +118,10 @@
         .chord-label:focus-visible {
             outline: 2px solid #1d65bf;
             outline-offset: 3px;
+        }
+        .chord-label.selected:focus-visible {
+            /* The selected background already marks the keyboard target. */
+            outline: none;
         }
         .chord-label:disabled {
             cursor: default;

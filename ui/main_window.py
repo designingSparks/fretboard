@@ -5,7 +5,7 @@ Based on qtoolbar_demo.py, adapted for fretboard player integration.
 
 import os
 from PySide6.QtWidgets import QMainWindow, QToolBar, QMenu, QWidget
-from PySide6.QtGui import QIcon, QAction, QFont, QActionGroup
+from PySide6.QtGui import QIcon, QAction, QFont, QActionGroup, QKeySequence
 from PySide6.QtCore import Qt, Signal, QSize
 
 _ICONS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "icons")
@@ -214,14 +214,15 @@ class MainWindow(QMainWindow):
         # Previous part
         self.prev_action = QAction(QIcon(os.path.join(_ICONS_DIR, "back.svg")), "Previous Part", self)
         self.prev_action.triggered.connect(self._on_previous)
-        self.prev_action.setShortcut(Qt.Key_Left)
+        # Qt maps Ctrl to Command on macOS and Control on other platforms.
+        self.prev_action.setShortcut(QKeySequence("Ctrl+Left"))
         self.prev_action.setEnabled(False)  # Disabled until lesson is loaded
         toolbar.addAction(self.prev_action)
 
         # Next part
         self.next_action = QAction(QIcon(os.path.join(_ICONS_DIR, "forward.svg")), "Next Part", self)
         self.next_action.triggered.connect(self._on_next)
-        self.next_action.setShortcut(Qt.Key_Right)
+        self.next_action.setShortcut(QKeySequence("Ctrl+Right"))
         self.next_action.setEnabled(False)  # Disabled until lesson is loaded
         toolbar.addAction(self.next_action)
 

@@ -3,6 +3,7 @@ C major triads on 3 adjacent strings at a time, starting from the top 3 strings 
 """
 
 from models.lesson_model import Part, Lesson
+from models.sequence_step import SequenceStep
 TON = 300  # Default note duration in milliseconds
 
 PART1_NOTES = [
@@ -11,19 +12,19 @@ PART1_NOTES = [
 ]
 
 PART1_SEQUENCE = [
-    [('G', 7), ('D', 5), 500],
-    [('G', 7), ('D', 5), 500],
-    [('G', 7), ('D', 5), 250],
-    [('G', 5), ('D', 5), 250],
-    [('G', 7), ('D', 5), 250],
-    [('B', 6), ('G', 5), 250],
+    SequenceStep(notes=(('G', 7), ('D', 5)), duration_ms=500),
+    SequenceStep(notes=(('G', 7), ('D', 5)), duration_ms=500),
+    SequenceStep(notes=(('G', 7), ('D', 5)), duration_ms=250),
+    SequenceStep(notes=(('G', 5), ('D', 5)), duration_ms=250),
+    SequenceStep(notes=(('G', 7), ('D', 5)), duration_ms=250),
+    SequenceStep(notes=(('B', 6), ('G', 5)), duration_ms=250),
 
-    [('D', 5), 500],
-    [('G', 7), ('D', 5), 250],
-    [('G', 5), ('D', 5), 250],
-    [('G', 5), ('D', 5), 250],
-    [('G', 3), ('D', 3), 250],
-    [('G', 0), ('D', 0), 300],
+    SequenceStep(notes=(('D', 5),), duration_ms=500),
+    SequenceStep(notes=(('G', 7), ('D', 5)), duration_ms=250),
+    SequenceStep(notes=(('G', 5), ('D', 5)), duration_ms=250),
+    SequenceStep(notes=(('G', 5), ('D', 5)), duration_ms=250),
+    SequenceStep(notes=(('G', 3), ('D', 3)), duration_ms=250),
+    SequenceStep(notes=(('G', 0), ('D', 0)), duration_ms=300),
 ]
 
 part1 = Part(
@@ -38,19 +39,19 @@ PART2_NOTES = [
 ]
 
 PART2_SEQUENCE = [
-    [('G', 0), ('D', 0), 300],
-    [('G', 0), ('D', 0), 300],
-    [('G', 3), ('D', 3), 300],
-    [('D', 0), 300],
-    [('G', 0), ('D', 0), 300],
-    [('D', 3), ('A', 1), 300],
-    [('D', 3), ('A', 1), 300],
-    [('D', 5), ('A', 3), 300],
-    [('D', 3), 300],
-    [('G', 5), 300],
-    [('D', 3), 300],
-    [('G', 3), ('D', 0), 300],
-    [('G', 0), 300],
+    SequenceStep(notes=(('G', 0), ('D', 0)), duration_ms=300),
+    SequenceStep(notes=(('G', 0), ('D', 0)), duration_ms=300),
+    SequenceStep(notes=(('G', 3), ('D', 3)), duration_ms=300),
+    SequenceStep(notes=(('D', 0),), duration_ms=300),
+    SequenceStep(notes=(('G', 0), ('D', 0)), duration_ms=300),
+    SequenceStep(notes=(('D', 3), ('A', 1)), duration_ms=300),
+    SequenceStep(notes=(('D', 3), ('A', 1)), duration_ms=300),
+    SequenceStep(notes=(('D', 5), ('A', 3)), duration_ms=300),
+    SequenceStep(notes=(('D', 3),), duration_ms=300),
+    SequenceStep(notes=(('G', 5),), duration_ms=300),
+    SequenceStep(notes=(('D', 3),), duration_ms=300),
+    SequenceStep(notes=(('G', 3), ('D', 0)), duration_ms=300),
+    SequenceStep(notes=(('G', 0),), duration_ms=300),
 ]
 
 part2 = Part(

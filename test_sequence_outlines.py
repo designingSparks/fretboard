@@ -14,6 +14,7 @@ from PySide6.QtWidgets import QApplication
 
 from models.lesson_model import Part
 from models.lesson_loader import LessonLoader
+from models.sequence_step import parse_sequence_row
 from ui.fretboard_view import FretboardView
 
 
@@ -97,7 +98,7 @@ class SequenceOutlineBrowserTests(unittest.TestCase):
                 groups = self.snapshot()
                 self.assertEqual(len(groups), len(part.play_sequence))
                 for group, row in zip(groups, part.play_sequence):
-                    self.assertEqual(group['notes'], len(set(row[:-1])))
+                    self.assertEqual(group['notes'], len(set(parse_sequence_row(row).notes)))
                     self.assertLessEqual(group['hull'], group['notes'])
                     self.assertGreaterEqual(group['x'], 0)
                     self.assertGreaterEqual(group['y'], 0)
@@ -123,7 +124,7 @@ class SequenceOutlineBrowserTests(unittest.TestCase):
                 with self.subTest(part=part.name, index=index):
                     self.javascript(f'highlightSequenceStep({index})')
                     expected = [[s, f] for s, f in step.notes
-                                if FRETBOARD_NOTES_SHARP[STRING_ID.index(s)][f] == step.chord_name]
+                                if FRETBOARD_NOTES_SHARP[STRING_ID.index(s)][f] == step.chord_name[0]]
                     self.assertEqual(len(expected), 1)
                     self.assertEqual(roots(), expected)
             self.javascript('setChordPlaybackState("stopped")')

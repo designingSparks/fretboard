@@ -4,6 +4,7 @@ Plays the first four triads horizontally, starting from the triad closest to the
 """
 
 from models.lesson_model import Part, Lesson
+from models.sequence_step import SequenceStep
 TON = 1000  # Default note duration in milliseconds
 
 # ============================================================================
@@ -15,10 +16,10 @@ PART1_NOTES = [
     ('G', 2), ('G', 7), ('G', 11), ('G', 14),
 ]
 PART1_SEQUENCE = [
-    [('e', 2), ('B', 3), ('G', 2), TON],
-    [('e', 5), ('B', 7), ('G', 7), TON],
-    [('e', 10), ('B', 10), ('G', 11), TON],
-    [('e', 14), ('B', 15), ('G', 14), TON],
+    SequenceStep(notes=(('e', 2), ('B', 3), ('G', 2)), duration_ms=TON),
+    SequenceStep(notes=(('e', 5), ('B', 7), ('G', 7)), duration_ms=TON),
+    SequenceStep(notes=(('e', 10), ('B', 10), ('G', 11)), duration_ms=TON),
+    SequenceStep(notes=(('e', 14), ('B', 15), ('G', 14)), duration_ms=TON),
 ]
 part1 = Part(
     name="Strings G, B, e",
@@ -37,10 +38,10 @@ PART2_NOTES = [
     ('D', 4), ('D', 7), ('D', 12), ('D', 16)
 ]
 PART2_SEQUENCE = [
-    [('B', 3), ('G', 2), ('D', 4), TON],
-    [('B', 7), ('G', 7), ('D', 7), TON],
-    [('B', 10), ('G', 11), ('D', 12), TON],
-    [('B', 15), ('G', 14), ('D', 16), TON],
+    SequenceStep(notes=(('B', 3), ('G', 2), ('D', 4)), duration_ms=TON),
+    SequenceStep(notes=(('B', 7), ('G', 7), ('D', 7)), duration_ms=TON),
+    SequenceStep(notes=(('B', 10), ('G', 11), ('D', 12)), duration_ms=TON),
+    SequenceStep(notes=(('B', 15), ('G', 14), ('D', 16)), duration_ms=TON),
 ]
 part2 = Part(
     name="Strings D, G, B",
@@ -59,10 +60,10 @@ PART3_NOTES = [
     ('A', 5), ('A', 9), ('A', 12), ('A', 17)
 ]
 PART3_SEQUENCE = [
-    [('G', 2), ('D', 4), ('A', 5), TON],
-    [('G', 7), ('D', 7), ('A', 9), TON],
-    [('G', 11), ('D', 12), ('A', 12), TON],
-    [('G', 14), ('D', 16), ('A', 17), TON],
+    SequenceStep(notes=(('G', 2), ('D', 4), ('A', 5)), duration_ms=TON),
+    SequenceStep(notes=(('G', 7), ('D', 7), ('A', 9)), duration_ms=TON),
+    SequenceStep(notes=(('G', 11), ('D', 12), ('A', 12)), duration_ms=TON),
+    SequenceStep(notes=(('G', 14), ('D', 16), ('A', 17)), duration_ms=TON),
 ]
 part3 = Part(
     name="Strings A, D, G",
@@ -81,10 +82,10 @@ PART4_NOTES = [
     ('E', 2), ('E', 5), ('E', 10), ('E', 14)
 ]
 PART4_SEQUENCE = [
-    [('D', 0), ('A', 0), ('E', 2), TON],
-    [('D', 4), ('A', 5), ('E', 5), TON],
-    [('D', 7), ('A', 9), ('E', 10), TON],
-    [('D', 12), ('A', 12), ('E', 14), TON],
+    SequenceStep(notes=(('D', 0), ('A', 0), ('E', 2)), duration_ms=TON),
+    SequenceStep(notes=(('D', 4), ('A', 5), ('E', 5)), duration_ms=TON),
+    SequenceStep(notes=(('D', 7), ('A', 9), ('E', 10)), duration_ms=TON),
+    SequenceStep(notes=(('D', 12), ('A', 12), ('E', 14)), duration_ms=TON),
 ]
 part4 = Part(
     name="Strings E, A, D",

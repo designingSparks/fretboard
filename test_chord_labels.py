@@ -70,7 +70,7 @@ class ChordLabelTests(unittest.TestCase):
                     root = roots[0]
                     self.assertEqual(
                         FRETBOARD_NOTES_SHARP[STRING_ID.index(root['stringName'])][root['fret']],
-                        step['chordName'],
+                        step['chordName'][0],  # G/C/D root, independent of label subtext
                     )
 
     def test_legacy_and_labelled_rows_keep_notes_and_duration(self):

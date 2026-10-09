@@ -11,8 +11,9 @@ The parser takes tablature in standard ASCII format and configuration specifying
 Returns Part objects ready to be used in Lesson definitions.
 """
 
-from typing import List, Dict, Tuple, Union, Any
+from typing import List, Dict, Tuple, Any
 from models.lesson_model import Part
+from models.sequence_step import SequenceStep, parse_sequence_row
 import re
 
 
@@ -178,7 +179,7 @@ def extract_notes_from_bars(bars: List[List[str]], bar_indices: List[int]) -> Li
 
 
 def create_play_sequence_from_bars(bars: List[List[str]], bar_indices: List[int],
-                                   note_durations: List[int]) -> List[List[Union[Tuple[str, int], int]]]:
+                                   note_durations: List[int]) -> List[SequenceStep]:
     """
     Create a play sequence from specified bars with given note durations.
 
@@ -188,7 +189,7 @@ def create_play_sequence_from_bars(bars: List[List[str]], bar_indices: List[int]
         note_durations: List of durations (in ms) for each note/chord event
 
     Returns:
-        Play sequence in the format: [[note(s)..., duration], ...]
+        SequenceStep objects with named notes and duration_ms fields
     """
     all_events = []
 
@@ -212,15 +213,7 @@ def create_play_sequence_from_bars(bars: List[List[str]], bar_indices: List[int]
             # If we run out of durations, use the last one
             duration = note_durations[-1] if note_durations else 500
 
-        # Build the sequence entry
-        if len(event['notes']) == 1:
-            # Single note
-            seq_entry = [event['notes'][0], duration]
-        else:
-            # Chord (multiple notes)
-            seq_entry = list(event['notes']) + [duration]
-
-        play_sequence.append(seq_entry)
+        play_sequence.append(SequenceStep(notes=tuple(event['notes']), duration_ms=duration))
 
     return play_sequence
 
@@ -365,7 +358,13 @@ def print_part_code(part: Part, part_name_variable: str = 'part1',
     print(f"{sequence_constant} = [")
 
     for seq_item in part.play_sequence:
-        print(f"    {seq_item},")
+        step = parse_sequence_row(seq_item)
+        fields = [f"notes={step.notes!r}", f"duration_ms={step.duration_ms}"]
+        for field in ('chord_name', 'shape', 'position_group'):
+            value = getattr(step, field)
+            if value is not None:
+                fields.append(f"{field}={value!r}")
+        print(f"    SequenceStep({', '.join(fields)}),")
 
     print("]")
     print()
@@ -410,6 +409,7 @@ def print_lesson_code(parts: List[Part], lesson_name: str = "My Lesson",
     print('"""')
     print()
     print("from models.lesson_model import Part, Lesson")
+    print("from models.sequence_step import SequenceStep")
     print()
     print("# ============================================================================")
     print()

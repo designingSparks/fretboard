@@ -1,3 +1,15 @@
+// Keep horizontal arrow keys from scrolling the embedded page.
+// Cmd/Ctrl + arrow lesson shortcuts are handled by the Qt window.
+document.addEventListener('keydown', event => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    const target = event.target;
+    if (target?.isContentEditable || target?.closest?.('input, textarea, select')) return;
+    event.preventDefault();
+    if (!event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+        window.moveChordSelection(event.key === 'ArrowRight' ? 1 : -1);
+    }
+});
+
 // --- 1. Configuration ---
 const SHOW_DOTS = true; // Set to false to hide fret markers
 const NUM_FRETS = 24;

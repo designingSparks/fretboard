@@ -6,16 +6,30 @@ Students will practice ascending patterns with two different variations.
 """
 
 from models.lesson_model import Part, Lesson
-from scales import C_MAJOR_POS4_HIGHLIGHT, C_MAJOR_POS4_PLAY
+from models.sequence_step import SequenceStep
+from scales import C_MAJOR_POS4_HIGHLIGHT
 
 # ============================================================================
 # PART 1: Position 4 - Ascending
 # ============================================================================
 
+TON = 500
+
+PART1_SEQUENCE = [
+    SequenceStep(notes=(('A', 3),), duration_ms=TON),
+    SequenceStep(notes=(('A', 5),), duration_ms=TON),
+    SequenceStep(notes=(('D', 2),), duration_ms=TON),
+    SequenceStep(notes=(('D', 3),), duration_ms=TON),
+    SequenceStep(notes=(('D', 5),), duration_ms=TON),
+    SequenceStep(notes=(('G', 2),), duration_ms=TON),
+    SequenceStep(notes=(('G', 4),), duration_ms=TON),
+    SequenceStep(notes=(('G', 5),), duration_ms=TON),
+]
+
 part1 = Part(
     name="Position 4 - Ascending",
     notes_to_highlight=C_MAJOR_POS4_HIGHLIGHT,
-    play_sequence=C_MAJOR_POS4_PLAY,
+    play_sequence=PART1_SEQUENCE,
     highlight_classes={'C': 'highlight1'},
     description='Start with your index finger on the 2nd fret'
 )
@@ -24,18 +38,16 @@ part1 = Part(
 # PART 2: Position 4 - Descending (custom sequence)
 # ============================================================================
 
-TON = 500
-
 # Create a descending version by reversing the ascending sequence
 DESCENDING_PLAY = [
-    [('G', 5), TON],
-    [('G', 4), TON],
-    [('G', 2), TON],
-    [('D', 5), TON],
-    [('D', 3), TON],
-    [('D', 2), TON],
-    [('A', 5), TON],
-    [('A', 3), TON],
+    SequenceStep(notes=(('G', 5),), duration_ms=TON),
+    SequenceStep(notes=(('G', 4),), duration_ms=TON),
+    SequenceStep(notes=(('G', 2),), duration_ms=TON),
+    SequenceStep(notes=(('D', 5),), duration_ms=TON),
+    SequenceStep(notes=(('D', 3),), duration_ms=TON),
+    SequenceStep(notes=(('D', 2),), duration_ms=TON),
+    SequenceStep(notes=(('A', 5),), duration_ms=TON),
+    SequenceStep(notes=(('A', 3),), duration_ms=TON),
 ]
 
 part2 = Part(

@@ -79,8 +79,8 @@ class AudioEngine(QObject):
         Load and prepare a playback sequence.
 
         Args:
-            play_seq: List of note sequences, where each sequence contains
-                     tuples of (string_name, fret) and an integer duration in ms
+            play_seq: SequenceStep objects with named notes and duration_ms fields.
+                      Legacy lists of note tuples followed by a duration are also accepted.
         """
         self.init_midi(play_seq)
         self.create_sound_list()
@@ -108,7 +108,7 @@ class AudioEngine(QObject):
         Convert the play sequence into MIDI note numbers and durations.
 
         Args:
-            play_seq: List of note sequences with (string, fret) tuples and durations
+            play_seq: Named SequenceStep objects or legacy note/duration lists
         """
         # MIDI note numbers for open strings from low E to high e
         open_string_midi = {
