@@ -6,7 +6,7 @@ Handles all JavaScript communication and fretboard visualization.
 import os
 import json
 import re
-from PySide6.QtCore import QUrl, Signal, Slot
+from PySide6.QtCore import QUrl, QUrlQuery, Signal, Slot
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from constants import FRETBOARD_NOTES_SHARP, FRETBOARD_NOTES_FLAT, STRING_ID
 from models.sequence_step import parse_sequence_row
@@ -21,12 +21,20 @@ class FretboardView(QWebEngineView):
     # Signal emitted when the web view has finished loading
     view_loaded = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, *, fret_count=24):
         super().__init__(parent)
+
+        if isinstance(fret_count, bool) or not isinstance(fret_count, int) or not 1 <= fret_count <= 24:
+            raise ValueError('fret_count must be an integer from 1 to 24')
+        self.fret_count = fret_count
 
         # Load the fretboard HTML
         html_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "fretboard.html")
-        self.load(QUrl.fromLocalFile(html_path))
+        url = QUrl.fromLocalFile(html_path)
+        query = QUrlQuery()
+        query.addQueryItem('frets', str(fret_count))
+        url.setQuery(query)
+        self.load(url)
         self.setZoomFactor(0.9)
 
         # Connect internal signal

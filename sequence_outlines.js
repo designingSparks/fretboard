@@ -3,6 +3,7 @@
     const SVG_NS = 'http://www.w3.org/2000/svg';
     const STROKE_WIDTH = 2;
     const EPSILON = 1e-7;
+    const MITER_LIMIT = 4;
     const add = (a, b, scale = 1) => ({x: a.x + b.x * scale, y: a.y + b.y * scale});
     const cross = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 
@@ -31,15 +32,27 @@
         });
     }
 
-    // Offset the supporting lines of a convex polygon and intersect neighbours.
+    // Offset supporting lines, clipping very acute miters before they can make
+    // a nearly collinear triad thousands of pixels wide. The clip plane stays
+    // outside the note clearance circle, unlike simply shortening the vertex.
     function offsetPolygon(polygon, distance) {
         if (distance < EPSILON) return polygon;
         const normals = outwardNormals(polygon);
-        return polygon.map((point, i) => {
+        return polygon.flatMap((point, i) => {
             const previous = normals[(i + normals.length - 1) % normals.length];
             const next = normals[i];
-            const factor = distance / (1 + previous.x * next.x + previous.y * next.y);
-            return add(point, add(previous, next), factor);
+            const sum = add(previous, next);
+            const length = Math.hypot(sum.x, sum.y);
+            const bisector = {x: sum.x / length, y: sum.y / length};
+            const cosine = length / 2;
+            if (cosine >= 1 / MITER_LIMIT) {
+                return [add(point, bisector, distance / cosine)];
+            }
+            const limit = distance * MITER_LIMIT;
+            const center = add(point, bisector, limit);
+            const tangent = {x: -bisector.y, y: bisector.x};
+            const halfWidth = (distance - limit * cosine) / Math.sqrt(1 - cosine * cosine);
+            return [add(center, tangent, -halfWidth), add(center, tangent, halfWidth)];
         });
     }
 

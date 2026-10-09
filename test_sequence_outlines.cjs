@@ -144,6 +144,34 @@ test('filleting is optional and the requested radius controls circular arcs', ()
     assert.ok(buildOutline(points, 8, true, 12).d.includes('A 12 12'));
 });
 
+test('near-collinear triads have bounded miters and retain full note clearance', () => {
+    // Adjacent frets narrow progressively: 3/4/5 is almost a straight diagonal.
+    // Previously this actual G-major shape produced a 14,127 px wide outline.
+    const widths = Array.from({length: 15}, (_, i) => 80 * .97 ** i);
+    const center = fret => 40 + widths.slice(0, fret - 1).reduce((a, b) => a + b, 0) + widths[fret - 1] / 2;
+    for (const frets of [[3, 4, 5], [5, 4, 3], [9, 7, 5]]) {
+        const points = frets.map((fret, index) => note(center(fret), 17.5 + index * 35));
+        for (const radius of [0, 4, 12, 24]) {
+            const shape = buildOutline(points, 8, radius > 0, radius);
+            assert.ok(!/NaN|Infinity/.test(shape.d));
+            const xs = points.map(p => p.x);
+            // A clipped tip has a 4*padding axial component and at most padding
+            // perpendicular to it. Include the 1px stroke on either side.
+            const maxExtra = 2 * (Math.hypot(4, 1) * 23 + 1);
+            assert.ok(shape.bounds.right - shape.bounds.left <= Math.max(...xs) - Math.min(...xs) + maxExtra);
+            assert.ok(shape.bounds.bottom - shape.bounds.top <= 70 + maxExtra);
+            const polygon = samplePath(shape.d);
+            polygon.forEach((p, i) => assert.ok(cross(p, polygon[(i + 1) % polygon.length],
+                polygon[(i + 2) % polygon.length]) >= -0.01));
+            for (const point of points) for (let i = 0; i < 32; i++) {
+                const angle = i * Math.PI / 16;
+                assertEnclosed(polygon, {x: point.x + 22.95 * Math.cos(angle),
+                    y: point.y + 22.95 * Math.sin(angle)});
+            }
+        }
+    }
+});
+
 test('horizontal and diagonal collinear groups stay narrow, single notes remain circular', () => {
     const horizontal = [note(0, 0), note(450, 0), note(900, 0)];
     const shape = buildOutline(horizontal, 8, true, 24);
@@ -175,4 +203,17 @@ test('rows stay separate, geometry responds to layout, and disabling clears outl
     board.draw([]);
     assert.equal(board.overlay.children.length, 0);
     assert.equal(board.diagram.style.padding, '0px');
+});
+
+test('a rounded GBe triad on the final fret reserves space for its right edge', () => {
+    const board = setup();
+    const triad = [board.note('e', 15, 1325, 20), board.note('B', 15, 1325, 55),
+        board.note('G', 16, 1390, 90)];
+    board.draw([triad]);
+    assert.equal(board.overlay.children.length, 1);
+    assert.ok(board.overlay.children[0].attrs.d.includes('A '));
+    const shape = buildOutline([note(1325, 20), note(1325, 55), note(1390, 90)], 8, true, 24);
+    const rightPadding = parseFloat(board.diagram.style.padding.split(' ')[1]);
+    assert.ok(shape.bounds.right > 1400); // Table edge in this fixture.
+    assert.ok(1400 + rightPadding >= shape.bounds.right + 2);
 });

@@ -12,7 +12,10 @@ document.addEventListener('keydown', event => {
 
 // --- 1. Configuration ---
 const SHOW_DOTS = true; // Set to false to hide fret markers
-const NUM_FRETS = 24;
+const requestedFrets = window.location
+    ? Number(new URLSearchParams(window.location.search).get('frets')) : 0;
+const NUM_FRETS = Number.isInteger(requestedFrets) && requestedFrets >= 1 && requestedFrets <= 24
+    ? requestedFrets : 24;
 const GUITAR_TUNING = [
     { name: 'e', openNote: 'E' }, { name: 'B', openNote: 'B' },
     { name: 'G', openNote: 'G' }, { name: 'D', openNote: 'D' },
