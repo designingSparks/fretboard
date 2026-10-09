@@ -2,10 +2,15 @@
 
 import json
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
+
+import numpy as np
 from PySide6.QtCore import QObject, Signal
 
 from audio_engine import AudioEngine
+from audio_rendering import render_sequence
 from main import FretboardPlayer
 from models.lesson_model import Part, Lesson
 from models.sequence_step import parse_sequence_row
@@ -94,22 +99,33 @@ class ChordLabelTests(unittest.TestCase):
                 parse_sequence_row(row)
 
     def test_audio_labels_do_not_change_midi_or_timing(self):
-        engine = SimpleNamespace()
-        AudioEngine.init_midi(engine, [
+        sequence = [
             [('e', 3), ('B', 3), ('G', 4), 'G', 1000],
             [('e', 3), ('B', 5), ('G', 5), 'C', 1000],
             [('e', 5), ('B', 7), ('G', 7), 'D', 1000],
-        ])
-        self.assertEqual(engine.midi, [[67, 62, 59], [67, 64, 60], [69, 66, 62]])
-        self.assertEqual(engine.note_duration, [1000, 1000, 1000])
+        ]
+        with patch('audio_rendering.wavfile.read',
+                   return_value=(1000, np.ones(1200, dtype=np.int16))) as read:
+            buffers = render_sequence(sequence, 'clean', 1000, 10)
+        self.assertEqual(
+            [Path(call.args[0]).name for call in read.call_args_list],
+            [f'clean_{note}.wav' for note in (67, 62, 59, 67, 64, 60, 69, 66, 62)],
+        )
+        self.assertEqual([len(buffer) for buffer in buffers], [2000, 2000, 2000])
 
     def test_rest_rows_keep_duration_and_index(self):
-        engine = SimpleNamespace(samplerate=44100)
-        AudioEngine.init_midi(engine, [[500]])
-        AudioEngine.create_sound_list(engine)
-        self.assertEqual(engine.midi, [[]])
-        self.assertEqual(len(engine.sound_list[0]), 44100)
-        self.assertFalse(any(engine.sound_list[0]))
+        with patch('audio_rendering.wavfile.read') as read:
+            buffers = render_sequence([[500], [0], [250]], 'clean', 44100, 10)
+        read.assert_not_called()
+        self.assertEqual([len(buffer) for buffer in buffers], [44100, 0, 22050])
+        self.assertTrue(all(not any(buffer) for buffer in buffers))
+
+    def test_engine_loads_a_part_without_changing_the_playback_interface(self):
+        engine = SimpleNamespace(audio_folder='clean', samplerate=1000, strum_delay_ms=10)
+        engine.load_sequence = lambda steps: AudioEngine.load_sequence(engine, steps)
+        part = Part('Rest', [('e', 0)], [[500]])
+        AudioEngine.load_part(engine, part)
+        self.assertEqual(engine.sound_list, [bytes(1000)])
 
     def test_stale_audio_callbacks_cannot_select_new_sequence(self):
         highlighted = []

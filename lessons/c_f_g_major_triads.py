@@ -82,7 +82,7 @@ PART1_SEQUENCE = [
 PART1_NOTES = _display_notes(PART1_SEQUENCE)
 
 part1 = Part(
-    name="1. C, F, G on strings G, B, e",
+    name="1. Strings G, B, e",
     notes_to_highlight=PART1_NOTES,
     play_sequence=PART1_SEQUENCE,
     highlight_chord_root=True,
@@ -113,7 +113,7 @@ PART2_SEQUENCE = [
 PART2_NOTES = _display_notes(PART2_SEQUENCE)
 
 part2 = Part(
-    name="2. C, F, G on strings D, G, B",
+    name="2. Strings D, G, B",
     notes_to_highlight=PART2_NOTES,
     play_sequence=PART2_SEQUENCE,
     highlight_chord_root=True,
@@ -141,7 +141,7 @@ PART3_SEQUENCE = [
 PART3_NOTES = _display_notes(PART3_SEQUENCE)
 
 part3 = Part(
-    name="3. C, F, G on strings A, D, G",
+    name="3. Strings A, D, G",
     notes_to_highlight=PART3_NOTES,
     play_sequence=PART3_SEQUENCE,
     highlight_chord_root=True,
@@ -169,7 +169,7 @@ PART4_SEQUENCE = [
 PART4_NOTES = _display_notes(PART4_SEQUENCE)
 
 part4 = Part(
-    name="4. C, F, G on strings E, A, D",
+    name="4. Strings E, A, D",
     notes_to_highlight=PART4_NOTES,
     play_sequence=PART4_SEQUENCE,
     highlight_chord_root=True,
@@ -181,7 +181,7 @@ part4 = Part(
 )
 
 lesson = Lesson(
-    name="C - F - G major triads",
+    name="C F G major triads",
     chord_label_title="Triad playing",
     parts=[part1, part2, part3, part4],
     description=(

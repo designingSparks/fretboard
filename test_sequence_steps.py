@@ -5,9 +5,11 @@ import io
 import unittest
 from contextlib import redirect_stdout
 from dataclasses import FrozenInstanceError
-from types import SimpleNamespace
+from unittest.mock import patch
 
-from audio_engine import AudioEngine
+import numpy as np
+
+from audio_rendering import render_sequence
 from lesson_utils.utils import (
     create_play_sequence, create_ascending_descending_sequence, repeat_sequence,
 )
@@ -47,13 +49,13 @@ class SequenceStepTests(unittest.TestCase):
         self.assertIs(part.play_sequence[0], step)
         self.assertEqual(part.play_sequence[-1].notes, ())
         self.assertEqual(part.get_duration_ms(), 1750)
-        named_engine, legacy_engine = SimpleNamespace(), SimpleNamespace()
-        AudioEngine.init_midi(named_engine, part.play_sequence)
-        AudioEngine.init_midi(legacy_engine, [
-            [('e', 3), ('B', 3), ('G', 4), 'G', 1000], [('e', 0), 500], [250],
-        ])
-        self.assertEqual(named_engine.midi, legacy_engine.midi)
-        self.assertEqual(named_engine.note_duration, legacy_engine.note_duration)
+        with patch('audio_rendering.wavfile.read',
+                   return_value=(1000, np.arange(1200, dtype=np.int16))):
+            named_buffers = render_sequence(part.play_sequence, 'clean', 1000, 10)
+            legacy_buffers = render_sequence([
+                [('e', 3), ('B', 3), ('G', 4), 'G', 1000], [('e', 0), 500], [250],
+            ], 'clean', 1000, 10)
+        self.assertEqual(named_buffers, legacy_buffers)
 
     def test_all_lesson_constants_and_parts_use_named_steps(self):
         loader = LessonLoader()

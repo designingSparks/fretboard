@@ -1,20 +1,18 @@
 """
 Audio engine for guitar fretboard playback.
-Handles all audio processing, loading, mixing, and playback timing.
+Streams prepared audio and synchronizes playback progress with the UI.
 """
 
 import os
-import numpy as np
 from PySide6.QtCore import QObject, QTimer, Qt, Slot, Signal
 from PySide6.QtMultimedia import QAudioSink, QAudioFormat, QMediaDevices
-import wavfile
-from models.sequence_step import parse_sequence_row
+from audio_rendering import render_sequence
 
 
 class AudioEngine(QObject):
     """
-    Manages all audio-related functionality for fretboard playback.
-    Handles WAV file loading, mixing, QAudioSink management, and playback timing.
+    Manages QAudioSink streaming, playback state, and progress timing.
+    Sequence preparation is delegated to audio_rendering.
     """
 
     # Signals
@@ -34,8 +32,6 @@ class AudioEngine(QObject):
         self.strum_delay_ms = strum_delay_ms
 
         # Playback state
-        self.midi = None  # List of MIDI note lists for each step
-        self.note_duration = None  # Duration in ms for each step
         self.sound_list = None  # Pre-mixed audio buffers as byte arrays
         self.play_index = 0
         self.is_playing = False
@@ -82,8 +78,9 @@ class AudioEngine(QObject):
             play_seq: SequenceStep objects with named notes and duration_ms fields.
                       Legacy lists of note tuples followed by a duration are also accepted.
         """
-        self.init_midi(play_seq)
-        self.create_sound_list()
+        self.sound_list = render_sequence(
+            play_seq, self.audio_folder, self.samplerate, self.strum_delay_ms
+        )
 
     def load_part(self, part):
         """
@@ -102,109 +99,6 @@ class AudioEngine(QObject):
         """
         self.load_sequence(part.play_sequence)
         print(f"Loaded part: {part.name}")
-
-    def init_midi(self, play_seq):
-        """
-        Convert the play sequence into MIDI note numbers and durations.
-
-        Args:
-            play_seq: Named SequenceStep objects or legacy note/duration lists
-        """
-        # MIDI note numbers for open strings from low E to high e
-        open_string_midi = {
-            'E': 40, 'A': 45, 'D': 50, 'G': 55, 'B': 59, 'e': 64
-        }
-
-        self.midi = []
-        self.note_duration = []
-
-        for sublist in play_seq:
-            step = parse_sequence_row(sublist)
-            self.midi.append([open_string_midi[s] + f for s, f in step.notes])
-            self.note_duration.append(step.duration_ms)
-
-        print(f"Initialized MIDI notes: {self.midi}")
-
-    def create_sound_list(self):
-        """
-        Load audio files, mix them with strum delay, and prepare byte arrays for playback.
-        """
-        self.sound_list = []
-
-        for idx, item in enumerate(self.midi):
-            if not item:
-                # Rest rows retain their sequence index and duration.
-                samples = int(self.samplerate * self.note_duration[idx] / 1000)
-                self.sound_list.append(np.zeros(samples, dtype=np.int16).tobytes())
-                continue
-            note_data_list = []
-            for note_id in item:
-                data = self._load_audio_file(note_id)
-                note_data_list.append(data)
-            note_mix = self._mix_notes(note_data_list)
-
-            # Truncate to the specified duration
-            duration_ms = self.note_duration[idx]
-            num_samples = int(self.samplerate * (duration_ms / 1000.0))
-            truncated_mix = note_mix[:num_samples]
-
-            # Convert to bytes for QAudioSink
-            self.sound_list.append(truncated_mix.tobytes())
-
-        print(f"Sound list created with {len(self.sound_list)} items.")
-
-    def _load_audio_file(self, midi_note):
-        """
-        Load a WAV file and return the numpy array.
-
-        Args:
-            midi_note: MIDI note number (used to construct filename)
-
-        Returns:
-            numpy array of audio samples (int16)
-        """
-        filename = f"clean_{midi_note}.wav"
-        file_path = os.path.abspath(os.path.join(self.audio_folder, filename))
-        try:
-            samplerate, data = wavfile.read(file_path)
-            return data
-        except Exception as e:
-            print(f"Error loading {filename}: {e}")
-            return np.array([], dtype=np.int16)
-
-    def _mix_notes(self, sound_data_list):
-        """
-        Mix multiple notes with strumming delay.
-
-        Args:
-            sound_data_list: List of numpy arrays containing audio samples
-
-        Returns:
-            numpy array of mixed audio samples (int16)
-        """
-        delay_samples = int(self.samplerate * self.strum_delay_ms / 1000)
-        strummed_arrays = []
-
-        for i, data in enumerate(sound_data_list):
-            initial_padding = np.zeros(i * delay_samples, dtype=data.dtype)
-            strummed_arr = np.concatenate((initial_padding, data))
-            strummed_arrays.append(strummed_arr)
-
-        max_len = max(len(arr) for arr in strummed_arrays)
-        padded_arrays = []
-        for arr in strummed_arrays:
-            padding = max_len - len(arr)
-            padded_arr = np.pad(arr, (0, padding), 'constant')
-            padded_arrays.append(padded_arr)
-
-        mixed_arr = np.sum([arr.astype(np.float32) for arr in padded_arrays], axis=0)
-
-        max_amp = np.max(np.abs(mixed_arr))
-        if max_amp > 0:
-            mixed_arr = mixed_arr / max_amp * 0.95
-
-        mixed_arr_int16 = (mixed_arr * np.iinfo(np.int16).max).astype(np.int16)
-        return mixed_arr_int16
 
     @Slot()
     def start_playback(self):
