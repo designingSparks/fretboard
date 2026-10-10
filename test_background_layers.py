@@ -11,9 +11,28 @@ from models.background_layer import BackgroundLayer, resolve_background_notes
 from models.lesson_model import Part
 from tablature.tablature_parser import print_lesson_code
 from ui.fretboard_view import FretboardView
+from ui.note_display import calculate_hidden_notes
 
 
 class BackgroundLayerTests(unittest.TestCase):
+    def test_hidden_notes_exclude_all_backgrounds_and_keep_first_playback_order(self):
+        layers = [BackgroundLayer(notes=[('G', 4)], color='#123'),
+                  BackgroundLayer(notes=[('G', 4), ('B', 3)], color='#456')]
+        backgrounds = resolve_background_notes([('e', 3)], layers)
+        sequence = [
+            [('e', 3), ('E', 3), ('G', 4), ('E', 3), 1000],
+            [500],
+            [('G', 0), ('B', 3), ('E', 3), 1000],
+            [('e', 0), ('G', 0), 500],
+        ]
+        self.assertEqual(calculate_hidden_notes(sequence, backgrounds),
+                         [('E', 3), ('G', 0), ('e', 0)])
+        self.assertEqual(calculate_hidden_notes(sequence, []),
+                         [('e', 3), ('E', 3), ('G', 4), ('G', 0), ('B', 3), ('e', 0)])
+        self.assertEqual(calculate_hidden_notes([[500]], backgrounds), [])
+        self.assertEqual(calculate_hidden_notes([], backgrounds), [])
+        self.assertEqual(calculate_hidden_notes([[('B', 3), 500]], backgrounds), [])
+
     def test_first_layer_wins_and_plain_notes_are_only_a_fallback(self):
         first = BackgroundLayer(notes=[('e', 3), ('e', 3)], color='#123456')
         second = BackgroundLayer(notes=[('e', 3), ('B', 3)], color='#abc')
@@ -50,10 +69,11 @@ class BackgroundLayerTests(unittest.TestCase):
         view = SimpleNamespace(page=lambda: SimpleNamespace(runJavaScript=scripts.append))
         layers = [BackgroundLayer(notes=[('G', 4), ('e', 3)], color='#abc'),
                   BackgroundLayer(notes=[('e', 3), ('B', 3)], color='#def')]
-        FretboardView.display_notes(view, [('G', 4)], background_layers=layers,
-                                   play_sequence=[[('e', 3), ('E', 7), 1000]])
-        args = json.loads('[' + scripts[0][len('displayNotes('):-2] + ']')
-        markers = json.loads(args[0])
+        part = Part('Layers', [('G', 4)], [[('e', 3), ('E', 7), 1000]], background_layers=layers)
+        FretboardView.display_notes(view, part)
+        self.assertEqual(len(scripts), 1)  # The entire initialization is one browser update.
+        args = json.loads(scripts[0][len('displayNotes('):-2])
+        markers = (args['backgroundNotes'] + args['hiddenNotes'])
         self.assertEqual(len(markers), 4)
         markers = {(n['stringName'], n['fret']): n for n in markers}
         self.assertEqual(markers[('e', 3)]['backgroundColor'], '#abc')

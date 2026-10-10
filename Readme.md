@@ -1,3 +1,56 @@
+# Packaging with Nuitka
+
+Use Python 3.12 and a C compiler (Xcode Command Line Tools on macOS).
+From `Modular/`, create a build environment and package the player:
+
+```bash
+python3.12 -m venv .venv-build
+source .venv-build/bin/activate
+python -m pip install -r requirements-build.txt
+python build_nuitka.py
+```
+
+After creating the build environment, rebuild from the parent `Fretboard/`
+directory with:
+
+```bash
+Modular/.venv-build/bin/python -m pip install -r Modular/requirements-build.txt
+Modular/.venv-build/bin/python Modular/build_nuitka.py
+```
+
+That command works from the parent `Fretboard/` directory. The script resolves
+all paths relative to itself. Add `--dry-run` to inspect the command without
+compiling. Output goes into `Modular/build/nuitka/`, including a
+`compilation-report.xml` listing the packaged modules and data.
+On macOS, the output is `Modular/build/nuitka/main.app` (display name Fretboard).
+The script applies and verifies an ad-hoc signature after packaging; Developer ID
+signing and notarization for public distribution are separate steps.
+On Windows/Linux, distribute
+the entire `main.dist/` folder. Build on each target operating system.
+
+The build includes the player, compiled `lessons/` modules, fretboard HTML and
+JavaScript, SVG toolbar icons, and `clean/*.wav` audio samples. The ignored
+`clean/` directory must be present on the build machine. The macOS icon is used
+when `icon/icon.icns` exists. **`main_export.py` and `tutorials/` are excluded.**
+Only explicitly listed resource files are copied; the project directory is
+never copied wholesale. Lessons are compiled as modules, and a generated
+manifest allows the lesson browser to discover them without Python source files.
+Adding a lesson to `lessons/` automatically includes it in the next build.
+
+The packaged app starts with `c_maj_triad`; running `main.py` from source keeps
+the configured tutorial. Remote WebEngine debugging is enabled only when
+running from source. The fretboard currently fetches GSAP and fonts from CDNs,
+so packaging does not make those external resources available offline.
+
+Build options follow the [Nuitka manual](https://nuitka.net/user-documentation/user-manual.html).
+
+Use the pinned Nuitka 4.1 or newer: older releases duplicate Qt WebEngine
+libraries in macOS bundles. The original 2.8.4 build was approximately 1.12 GB,
+including both a 226 MB ARM browser library and a 470 MB universal copy.
+[Nuitka 4.1 fixes the duplication](https://nuitka.net/posts/nuitka-release-41.html).
+The embedded browser still contributes a substantial baseline size. A rebuild
+with the updated compiler is required to shrink an existing bundle.
+
 # Loading lessons and tutorials
 
 In `main.py`, choose the startup content with:
@@ -142,6 +195,15 @@ Static exports remain overviews containing every retained sequence note. With
 `highlight_notes=False`, background layer colors are preserved; `True` uses the
 active highlight colors. `highlight_classes` controls legacy/active coloring;
 it does not replace explicit background layer colors.
+
+Part initialization uses `FretboardView.display_notes(part, use_sharp=True,
+chord_label_title='Triad playing')`. It resolves backgrounds, calls
+`calculate_hidden_notes(play_sequence, backgrounds)` to find unique playback-only
+positions in their first playback order, and prepares one browser update. The
+pure preparation functions live in `ui/note_display.py`. In `main.js`,
+`displayNotes()` clears the previous part, creates background and hidden markers
+through a shared helper, initializes labels/outlines, and explicitly selects the
+first labelled step. Playback updates reuse these markers.
 
 Tests (from the repository root):
 

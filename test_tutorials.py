@@ -26,21 +26,21 @@ class TutorialTests(unittest.TestCase):
         self.assertEqual(len(part.play_sequence), 4)
         scripts = []
         view = SimpleNamespace(page=lambda: SimpleNamespace(runJavaScript=scripts.append))
-        FretboardView.display_notes(
-            view, part.background_notes, part.highlight_classes,
-            play_sequence=part.play_sequence, highlight_chord_root=part.highlight_chord_root,
-        )
-        args = json.loads('[' + scripts[0][len('displayNotes('):-2] + ']')
-        markers = json.loads(args[0])
+        FretboardView.display_notes(view, part)
+        args = json.loads(scripts[0][len('displayNotes('):-2])
+        markers = (args['backgroundNotes'] + args['hiddenNotes'])
         self.assertEqual({(n['stringName'], n['fret']) for n in markers},
                          chord | {('E', 7)})
         self.assertEqual({(n['stringName'], n['fret']) for n in markers if n['isBackground']},
-                         chord)
+                         chord | {('E', 7)})
+        self.assertEqual(args['hiddenNotes'], [])
+        self.assertEqual(next(n for n in markers if n['stringName'] == 'E' and n['fret'] == 7)
+                         ['backgroundColor'], '#91c2e6')
         self.assertTrue(all(note['highlight'] is None for note in markers))
         for index, (triad, root) in enumerate(zip(
                 triads, [('e', 3), ('D', 5), ('D', 5), ('D', 5)])):
             self.assertEqual(part.play_sequence[index].notes, triad)
-            step = args[5][index]
+            step = args['sequenceSteps'][index]
             self.assertEqual(step['chordName'], 'G')
             self.assertEqual([(n['stringName'], n['fret']) for n in step['notes']], list(triad))
             self.assertEqual([(n['stringName'], n['fret']) for n in step['notes'] if n['isRoot']], [root])

@@ -1,6 +1,7 @@
 """Find G major triads across four string groups around the A-shape barre chord."""
 
 from models.lesson_model import Lesson, Part
+from models.background_layer import BackgroundLayer
 from models.sequence_step import SequenceStep
 
 TON = 1000
@@ -15,9 +16,19 @@ PART1_NOTES = [
     ('e', 10),  # D
 ]
 
+# Playback notes outside the barre chord.
+EXTRA_NOTES = [
+    ('A', 14),  # B
+    ('E', 15),  # G
+]
+
 part1 = Part(
     name='Part 1: A-shape triads',
     background_notes=PART1_NOTES,
+    background_layers=[
+        # Muted mid blue with the default grey background's brightness and opacity.
+        BackgroundLayer(notes=EXTRA_NOTES, color='#91c2e6'),
+    ],
     play_sequence=[
         SequenceStep(notes=(('G', 12), ('B', 12), ('e', 10)),
                      duration_ms=TON, chord_name='G', shape='A'),

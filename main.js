@@ -250,91 +250,53 @@ function drawScale(scale) {
     }
 }
 
-/**
- * Draws a specific scale pattern received from an external source (like Python).
- * This function only draws the notes specified in the pattern.
- * @param {Array<Object>} pattern - An array of note objects, e.g., [{stringName: 'E', fret: 3, duration: 500}, ...]
- */
-function drawScalePattern(pattern) {
-    // Clear any existing notes from the fretboard
-    document.querySelectorAll('.note, .open-string-note').forEach(n => n.remove());
-
-    //TODO: Shift this to a separate function. I may want an option to show the open string notes.
-    // Restore open string labels (always visible, regardless of pattern)
-    GUITAR_TUNING.forEach((stringInfo, index) => {
-        const labelCell = document.querySelector(`td.string-label[data-string="${index}"]`);
-        if (labelCell) {
-            labelCell.textContent = stringInfo.name;
-        }
-    });
-
-    // Create a mapping from string name to its index for quick lookups.
-    const stringNameToIndex = GUITAR_TUNING.reduce((acc, stringInfo, index) => {
-        acc[stringInfo.name] = index;
-        return acc;
-    }, {});
-
-    pattern.forEach(noteInfo => {
-        const stringIndex = stringNameToIndex[noteInfo.stringName];
-        const fret = noteInfo.fret;
-
-        if (stringIndex === undefined) {
-            console.warn(`Unknown string name in pattern: ${noteInfo.stringName}`);
-            return;
-        }
-
-        if (fret === 0) {
-            // Handle open string notes (fret 0)
-            const labelCell = document.querySelector(`td.string-label[data-string="${stringIndex}"]`);
-            if (labelCell) {
-                const stringName = GUITAR_TUNING[stringIndex].name;
-                // Clear the plain text string name before adding the styled note div
-                labelCell.textContent = '';
-                const noteDiv = document.createElement('div');
-                noteDiv.classList.add('open-string-note', 'inactive'); // Add default and inactive classes
-                if (noteInfo.highlight) { // If highlight is not null or undefined
-                    noteDiv.classList.add(noteInfo.highlight);
-                }
-                // Apply tighter letter-spacing only for flat symbols (♭) - not needed on fret 0.
-                // if (noteInfo.hasFlat) {
-                //     noteDiv.style.letterSpacing = FLAT_SYMBOL_LETTER_SPACING;
-                // }
-                noteDiv.textContent = stringName;
-                noteDiv.dataset.fret = 0;
-                noteDiv.dataset.duration = noteInfo.duration;
-                initializeNoteAppearance(noteDiv, noteInfo);
-                labelCell.appendChild(noteDiv);
-                if (noteInfo.isBackground === false) {
-                    const label = document.createElement('span');
-                    label.className = 'open-string-label';
-                    label.textContent = stringName;
-                    labelCell.appendChild(label);
-                    noteDiv.openStringLabel = label;
-                }
-            }
-        } else {
-            // Handle fretted notes (fret > 0)
-            const cell = document.querySelector(`td.fret[data-string="${stringIndex}"][data-fret="${fret}"]`);
-            if (cell) {
-                const noteDiv = document.createElement('div');
-                noteDiv.classList.add('note', 'inactive'); // Add default and inactive classes
-                if (noteInfo.highlight) { // If highlight is not null or undefined
-                    noteDiv.classList.add(noteInfo.highlight);
-                }
-                // Apply tighter letter-spacing only for flat symbols (♭)
-                if (noteInfo.hasFlat) {
-                    noteDiv.style.letterSpacing = FLAT_SYMBOL_LETTER_SPACING;
-                }
-                noteDiv.textContent = noteInfo.noteName; // Use the name from Python
-                noteDiv.dataset.fret = fret;
-                noteDiv.dataset.duration = noteInfo.duration; // Store duration for future use
-                initializeNoteAppearance(noteDiv, noteInfo);
-                cell.appendChild(noteDiv);
-            }
-        }
+// Part initialization creates each position once. Background and playback-only
+// markers use the same creation path; only their initial visibility differs.
+function clearPreviousPart() {
+    window.clearNoteHighlights();
+    document.querySelectorAll('.note, .open-string-note').forEach(note => note.remove());
+    GUITAR_TUNING.forEach((string, index) => {
+        const cell = document.querySelector(`td.string-label[data-string="${index}"]`);
+        if (cell) cell.textContent = string.name; // Also removes old open-note labels.
     });
 }
 
+function createNoteMarker(info) {
+    const stringIndex = GUITAR_TUNING.findIndex(string => string.name === info.stringName);
+    if (stringIndex === -1) return;
+    const isOpen = info.fret === 0;
+    const selector = isOpen
+        ? `td.string-label[data-string="${stringIndex}"]`
+        : `td.fret[data-string="${stringIndex}"][data-fret="${info.fret}"]`;
+    const cell = document.querySelector(selector);
+    if (!cell) return;
+    if (isOpen) cell.textContent = '';
+
+    const note = document.createElement('div');
+    note.classList.add(isOpen ? 'open-string-note' : 'note', 'inactive');
+    note.textContent = isOpen ? info.stringName : info.noteName;
+    note.dataset.fret = info.fret;
+    if (info.highlight) note.classList.add(info.highlight);
+    if (!isOpen && info.hasFlat) note.style.letterSpacing = FLAT_SYMBOL_LETTER_SPACING;
+    if (isOpen && info.isBackground === false) {
+        const label = document.createElement('span');
+        label.className = 'open-string-label';
+        label.textContent = info.stringName;
+        cell.appendChild(label);
+        note.openStringLabel = label;
+    }
+    initializeNoteAppearance(note, info);
+    cell.appendChild(note);
+}
+
+function displayBackgroundNotes(notes) {
+    notes.forEach(info => createNoteMarker({...info, isBackground: true}));
+}
+
+function createHiddenPlaybackNotes(notes) {
+    // These positions have already been calculated to exclude every background.
+    notes.forEach(info => createNoteMarker({...info, isBackground: false}));
+}
 
 /**
  * Highlights a specific scale position by fading all notes,
@@ -713,25 +675,21 @@ window.handlePythonBendRequest = function(stringIndex, fret, halftones) {
     }
 };
 
-/**
- * Receives a scale or lick pattern from Python, parses it, and draws it on the fretboard.
- * e.g. Cmaj. It prints all notes of the pattern in the inactive state initially.
- * @param {string} jsonData - A JSON string representing the scale pattern.
- */
-window.displayNotes = function(jsonData, sequenceGroups = [], wrappingDistance = 8,
-                               filletCorners = false, filletRadius = 24, sequenceSteps = [],
-                               chordLabelTitle = 'Triad playing') {
-    console.log("Received scale pattern from Python.");
-    try {
-        const pattern = JSON.parse(jsonData);
-        drawScalePattern(pattern);
-        renderChordSequence(sequenceSteps, chordLabelTitle);
-        setSequenceOutlines(sequenceGroups, wrappingDistance, filletCorners, filletRadius);
-        drawStringsAsSVG();
-    } catch (e) {
-        console.error("Failed to parse scale pattern from Python:", e);
-    }
+/** Initialize a part from the single structured payload prepared by display_notes(). */
+window.displayNotes = function(data) {
+    clearPreviousPart();
+    displayBackgroundNotes(data.backgroundNotes || []);
+    createHiddenPlaybackNotes(data.hiddenNotes || []);
+    window.renderChordSequence(data.sequenceSteps || [], data.chordLabelTitle);
+    initializeOutlines(data);
+    drawStringsAsSVG();
+    window.applyInitialSelection();
 };
+
+function initializeOutlines(data) {
+    setSequenceOutlines(data.sequenceGroups || [], data.wrappingDistance ?? 8,
+        data.filletCorners ?? false, data.filletRadius ?? 24);
+}
 
 
 function clearChordRootHighlights() {

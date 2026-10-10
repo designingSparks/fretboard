@@ -17,6 +17,7 @@ from PySide6.QtGui import QFont, QFontDatabase, QFontInfo, QFontMetricsF, QImage
 from PySide6.QtSvg import QSvgRenderer
 
 from models.lesson_loader import load_lesson
+from models.sequence_step import SequenceStep
 from mylog import get_logger
 
 logger = get_logger(__name__)
@@ -320,17 +321,17 @@ class FretboardExporter(QObject):
                                             if note in visible_positions))
                   for layer in part.background_layers]
         self.progress.emit(f'{self.names[self.index]}.{self.formats[0]}')
-        self.view.display_notes(
-            notes, part.highlight_classes if self.highlight_classes is None else self.highlight_classes,
-            use_sharp=self.lesson.use_sharp, play_sequence=sequence,
-            background_layers=layers,
-            circle_sequence_elements=circle,
-            wrapping_distance=part.wrapping_distance,
-            fillet_corners=rounded,
-            fillet_radius=part.fillet_radius,
-            highlight_chord_root=part.highlight_chord_root,
-            chord_label_title=self.lesson.chord_label_title,
+        # If every step is out of range, a zero-length rest keeps the Part valid
+        # while rendering only its retained backgrounds. The source is untouched.
+        display_part = replace(
+            part, background_notes=notes, background_layers=layers,
+            play_sequence=sequence or [SequenceStep(notes=(), duration_ms=0)],
+            highlight_classes=part.highlight_classes if self.highlight_classes is None
+                              else self.highlight_classes,
+            circle_sequence_elements=circle, fillet_corners=rounded,
         )
+        self.view.display_notes(display_part, use_sharp=self.lesson.use_sharp,
+                               chord_label_title=self.lesson.chord_label_title)
         self._timeout.start(30000)
         # Browser commands execute in order; prepare follows the display update.
         self._javascript("window.renderChordSequence([], ''); window.clearNoteHighlights(); "

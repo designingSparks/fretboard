@@ -58,16 +58,7 @@ class SequenceOutlineBrowserTests(unittest.TestCase):
         return results[0]
 
     def display(self, part):
-        self.view.display_notes(
-            part.background_notes, part.highlight_classes,
-            background_layers=part.background_layers,
-            play_sequence=part.play_sequence,
-            circle_sequence_elements=part.circle_sequence_elements,
-            wrapping_distance=part.wrapping_distance,
-            fillet_corners=part.fillet_corners,
-            fillet_radius=part.fillet_radius,
-            highlight_chord_root=part.highlight_chord_root,
-        )
+        self.view.display_notes(part)
         # Wait for layout/animation-frame work, including on offscreen Qt.
         loop = QEventLoop()
         QTimer.singleShot(150, loop.quit)
@@ -154,18 +145,21 @@ class SequenceOutlineBrowserTests(unittest.TestCase):
         self.javascript('clearNoteHighlights()')
         self.assertFalse(marker(5, 7)['visible'])
 
-    def test_tutorial_extra_low_e_is_visible_only_when_selected(self):
+    def test_tutorial_extra_low_e_restores_blue_background_after_selection(self):
         for name, fret in [('Gmaj_E_shape', 7), ('GMaj_A_shape', 15), ('Gmaj_C_shape', 10)]:
             with self.subTest(tutorial=name):
                 part = LessonLoader('tutorials').load_lesson(name).parts[0]
                 self.display(part)
                 selector = f'td[data-string="5"][data-fret="{fret}"] .note'
                 visible = f'getComputedStyle(document.querySelector({json.dumps(selector)})).visibility'
-                self.assertEqual(self.javascript(visible), 'hidden')
+                color = f'getComputedStyle(document.querySelector({json.dumps(selector)})).backgroundColor'
+                self.assertEqual(self.javascript(visible), 'visible')
+                self.assertEqual(self.javascript(color), 'rgb(145, 194, 230)')
                 self.javascript('document.querySelectorAll(".chord-label")[3].click()')
                 self.assertEqual(self.javascript(visible), 'visible')
                 self.javascript('clearNoteHighlights()')
-                self.assertEqual(self.javascript(visible), 'hidden')
+                self.assertEqual(self.javascript(visible), 'visible')
+                self.assertEqual(self.javascript(color), 'rgb(145, 194, 230)')
 
     def test_g_c_d_root_follows_each_triad_and_clears_on_stop(self):
         from constants import FRETBOARD_NOTES_SHARP, STRING_ID
@@ -264,25 +258,26 @@ class SequenceOutlineModelTests(unittest.TestCase):
                 self.script = script
 
         view = RecordingView()
-        FretboardView.display_notes(
-            view, [('e', 0)], play_sequence=[
+        part = Part(
+            'Groups', [('e', 0)], play_sequence=[
                 [('e', 0), ('B', 1), 1000],
                 [('B', 1), ('e', 0), 1000],
                 [('G', 5), ('G', 5), 500], [500],
             ], circle_sequence_elements=True, wrapping_distance=12,
             fillet_corners=True, fillet_radius=10,
         )
-        args = json.loads('[' + view.script[len('displayNotes('):-2] + ']')
-        notes, groups, distance = json.loads(args[0]), args[1], args[2]
+        FretboardView.display_notes(view, part)
+        args = json.loads(view.script[len('displayNotes('):-2])
+        notes, groups, distance = (args['backgroundNotes'] + args['hiddenNotes']), args['sequenceGroups'], args['wrappingDistance']
         self.assertEqual(len(notes), 3)
         self.assertEqual([len(group) for group in groups], [2, 2, 1])
         self.assertEqual(groups[0], list(reversed(groups[1])))
         self.assertEqual(distance, 12)
-        self.assertEqual(args[3:5], [True, 10])
-        FretboardView.display_notes(view, [('e', 0)])
-        args = json.loads('[' + view.script[len('displayNotes('):-2] + ']')
-        self.assertEqual(args[1], [])
-        self.assertEqual(args[3:5], [False, 24])
+        self.assertEqual([args['filletCorners'], args['filletRadius']], [True, 10])
+        FretboardView.display_notes(view, Part('Default', [('e', 0)], [[500]]))
+        args = json.loads(view.script[len('displayNotes('):-2])
+        self.assertEqual(args['sequenceGroups'], [])
+        self.assertEqual([args['filletCorners'], args['filletRadius']], [False, 24])
 
     def test_lessons_and_template_load(self):
         from lessons import _template

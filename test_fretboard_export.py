@@ -54,8 +54,8 @@ class FakeView:
     def page(self):
         return self
 
-    def display_notes(self, notes, colors, **options):
-        self.parts.append((notes, colors, options))
+    def display_notes(self, part, **options):
+        self.parts.append(part)
         self.ready = False
 
     def runJavaScript(self, script, callback):
@@ -103,8 +103,8 @@ class ExportTests(unittest.TestCase):
         timeout.stop()
         self.assertFalse(failures)
         self.assertFalse(exporter.busy)
-        notes, _, options = view.parts[0]
-        layers = options['background_layers']
+        notes = view.parts[0].background_notes
+        layers = view.parts[0].background_layers
         self.assertEqual([layer.notes for layer in layers], [(('E', 3),), (('E', 3), ('A', 5))])
         self.assertEqual(resolve_background_notes(notes, layers)[('E', 3)]['backgroundColor'], '#123')
         self.assertIn(('B', 20), part.background_layers[0].notes)  # Source remains intact.
@@ -121,6 +121,31 @@ class ExportTests(unittest.TestCase):
             self.assertTrue(all(fret < 15 for _, fret in notes))
             self.assertEqual(set(notes), {note for step in steps for note in step.notes})
         self.assertTrue(all(len(part.play_sequence) == 4 for part in lesson.parts))
+
+    def test_export_handles_a_part_with_no_playback_steps_in_range(self):
+        part = Part('Outside', [('A', 5)], [[('e', 24), 1000]])
+        view = FakeView()
+        exporter = FretboardExporter(view)
+        failures = []
+        loop = QEventLoop()
+        exporter.finished.connect(loop.quit)
+        exporter.failed.connect(lambda error: (failures.append(error), loop.quit()))
+        timeout = QTimer()
+        timeout.setSingleShot(True)
+        timeout.timeout.connect(loop.quit)
+        timeout.start(5000)
+        with tempfile.TemporaryDirectory() as directory, patch(
+                'fretboard_export.load_lesson', return_value=Lesson('Outside', [part])), self.assertLogs(
+                'glead.fretboard_export', level='WARNING'):
+            exporter.export_lesson('outside', directory, formats=('svg',))
+            loop.exec()
+        timeout.stop()
+        self.assertFalse(failures)
+        self.assertFalse(exporter.busy)
+        self.assertEqual(view.parts[0].background_notes, [('A', 5)])
+        self.assertEqual(view.parts[0].get_duration_ms(), 0)
+        self.assertTrue(all(not step.notes for step in view.parts[0].play_sequence))
+        self.assertEqual(part.play_sequence[0].notes, (('e', 24),))
 
     def test_skipped_triad_keeps_notes_shared_with_a_visible_triad(self):
         base = load_lesson('g_maj_triad').parts[0]
@@ -334,17 +359,17 @@ class ExportTests(unittest.TestCase):
                 timeout.stop()
                 self.assertFalse(failures)
                 self.assertFalse(exporter.busy)
-                self.assertEqual([args[2]['circle_sequence_elements'] for args in view.parts], expected)
-                self.assertEqual([len(args[2]['play_sequence']) for args in view.parts], [4] * 4)
-                self.assertIn(('G', 16), view.parts[0][0])
+                self.assertEqual([part.circle_sequence_elements for part in view.parts], expected)
+                self.assertEqual([len(part.play_sequence) for part in view.parts], [4] * 4)
+                self.assertIn(('G', 16), view.parts[0].background_notes)
                 self.assertEqual([part.circle_sequence_elements for part in lesson.parts],
                                  [False, True, False, True])
                 self.assertEqual([part.fillet_corners for part in lesson.parts],
                                  [False, True, False, True])
-                for part, (_, _, options) in zip(lesson.parts, view.parts):
-                    self.assertEqual(options['wrapping_distance'], part.wrapping_distance)
-                    self.assertEqual(options['fillet_corners'], True if override is True else part.fillet_corners)
-                    self.assertEqual(options['fillet_radius'], part.fillet_radius)
+                for part, rendered in zip(lesson.parts, view.parts):
+                    self.assertEqual(rendered.wrapping_distance, part.wrapping_distance)
+                    self.assertEqual(rendered.fillet_corners, True if override is True else part.fillet_corners)
+                    self.assertEqual(rendered.fillet_radius, part.fillet_radius)
 
     def test_timeout_ignores_late_browser_callbacks(self):
         class StalledView(FakeView):
@@ -386,7 +411,7 @@ class ExportTests(unittest.TestCase):
                 timeout.stop()
                 self.assertFalse(failures)
                 self.assertFalse(exporter.busy)
-                self.assertEqual([part[1] for part in view.parts],
+                self.assertEqual([part.highlight_classes for part in view.parts],
                                  original_colors if colors is None else [colors] * 4)
                 preparations = [script for script in view.scripts if 'fretboardExport.prepare(' in script
                                 and not script.startswith('/*')]

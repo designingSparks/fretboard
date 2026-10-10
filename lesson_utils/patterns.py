@@ -5,19 +5,13 @@ Usage:
 generate_pattern()
 """
 
-try:
-    # This works when imported as part of the package
-    from ..constants import (
-        FRETBOARD_NOTES, STRING_MAP, STRING_NAMES
-    )
-except ImportError:
-    # This allows the script to be run directly, resolving the relative import
+if __name__ == "__main__":
+    # Support running this helper directly as well as importing it from the app.
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from constants import (
-        FRETBOARD_NOTES, STRING_MAP, STRING_NAMES
-    )
+
+from constants import FRETBOARD_NOTES, STRING_MAP, STRING_NAMES
 
 # Base patterns using E minor / G major as reference
 # Each pattern stores: root anchor points and note positions

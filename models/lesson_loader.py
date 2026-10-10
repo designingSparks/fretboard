@@ -8,6 +8,7 @@ from the lessons directory.
 import os
 import sys
 import importlib.util
+import json
 from pathlib import Path
 from typing import List, Optional, Dict
 from models.lesson_model import Lesson
@@ -35,6 +36,13 @@ class LessonLoader:
             self.lessons_dir = Path(__file__).parent.parent / self.lessons_dir
 
         self._lesson_cache: Dict[str, Lesson] = {}
+        # Compiled lessons have no .py files to discover or execute from disk.
+        self._bundled_lessons = None
+        app_dir = Path(__file__).parent.parent
+        if "__compiled__" in globals() and self.lessons_dir.resolve() == (app_dir / "lessons").resolve():
+            self._bundled_lessons = json.loads(
+                (app_dir / "bundled_lessons.json").read_text(encoding="utf-8")
+            )
 
     def get_available_lesson_files(self) -> List[str]:
         """
@@ -44,6 +52,9 @@ class LessonLoader:
             List of lesson filenames (without .py extension)
             Files starting with _ or . are excluded
         """
+        if self._bundled_lessons is not None:
+            return list(self._bundled_lessons)
+
         if not self.lessons_dir.exists():
             print(f"Warning: Lessons directory '{self.lessons_dir}' does not exist")
             return []
@@ -83,19 +94,25 @@ class LessonLoader:
 
         file_path = self.lessons_dir / f"{filename}.py"
 
-        if not file_path.exists():
+        if self._bundled_lessons is not None and filename not in self._bundled_lessons:
+            print(f"Error: Lesson '{filename}' is not bundled")
+            return None
+        if self._bundled_lessons is None and not file_path.exists():
             print(f"Error: Lesson file '{file_path}' not found")
             return None
 
         try:
-            # Dynamically import the lesson module
-            spec = importlib.util.spec_from_file_location(filename, file_path)
-            if spec is None or spec.loader is None:
-                print(f"Error: Could not load module spec for '{file_path}'")
-                return None
+            if self._bundled_lessons is not None:
+                module = importlib.import_module(f"lessons.{filename}")
+            else:
+                # Source lessons remain editable and reloadable during development.
+                spec = importlib.util.spec_from_file_location(filename, file_path)
+                if spec is None or spec.loader is None:
+                    print(f"Error: Could not load module spec for '{file_path}'")
+                    return None
 
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
 
             # Extract the lesson object
             if not hasattr(module, 'lesson'):

@@ -2,19 +2,13 @@
 Triad generation utilities for the fretboard learning application.
 This file is not used by the program. It is just used to help generate the triad data when creating lessons.
 """
-try:
-    # This works when imported as part of the package
-    from ..constants import (
-        CHROMATIC_SCALE, STRING_MAP, FLAT_TO_SHARP, FRETBOARD_NOTES, STRING_ID
-    )
-except ImportError:
-    # This allows the script to be run directly, resolving the relative import
+if __name__ == "__main__":
+    # Support running this helper directly as well as importing it from the app.
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from constants import (
-        CHROMATIC_SCALE, STRING_MAP, FLAT_TO_SHARP, FRETBOARD_NOTES, STRING_ID
-    )
+
+from constants import CHROMATIC_SCALE, STRING_MAP, FLAT_TO_SHARP, FRETBOARD_NOTES, STRING_ID
 
 def _create_tuple(string_list, note_list):
     '''

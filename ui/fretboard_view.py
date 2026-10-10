@@ -5,12 +5,11 @@ Handles all JavaScript communication and fretboard visualization.
 
 import os
 import json
-import re
 from PySide6.QtCore import QUrl, QUrlQuery, Signal, Slot
 from PySide6.QtWebEngineWidgets import QWebEngineView
-from constants import FRETBOARD_NOTES_SHARP, FRETBOARD_NOTES_FLAT, STRING_ID
-from models.sequence_step import parse_sequence_row
 from models.background_layer import resolve_background_notes
+from ui.note_display import (calculate_hidden_notes, prepare_background_notes,
+                             prepare_hidden_notes, prepare_sequence_steps)
 
 
 class FretboardView(QWebEngineView):
@@ -47,89 +46,29 @@ class FretboardView(QWebEngineView):
         print("Fretboard view loaded successfully")
         self.view_loaded.emit()
 
-    def display_notes(self, background_notes, highlight_classes=None, use_sharp=True,
-                      play_sequence=None, circle_sequence_elements=False,
-                      wrapping_distance=8.0, fillet_corners=False, fillet_radius=24.0,
-                      chord_label_title="Triad playing", highlight_chord_root=False,
-                      background_layers=()):
+    def display_notes(self, part, *, use_sharp=True, chord_label_title="Triad playing"):
+        """Initialize all notes for a part in one browser update.
+
+        Resolve first-layer-wins backgrounds, calculate playback-only positions,
+        then prepare markers and sequence metadata. The browser creates visible
+        backgrounds and hidden playback markers before selecting the first chord.
+        Later playback updates activate existing markers without rebuilding them.
         """
-        Display notes on the fretboard in an inactive state.
-
-        Args:
-            background_notes: List of (string_name, fret) tuples
-            background_layers: Colored layers; the first layer at a position wins.
-                               Playback-only markers start hidden until selected.
-            highlight_classes: Dict mapping note names to CSS highlight classes
-                             e.g., {'C': 'highlight1', 'E': 'highlight2'}
-            use_sharp: If True, use sharp notation (C#, D#). If False, use flat notation (Db, Eb)
-            play_sequence: SequenceStep objects (legacy note/duration rows also accepted)
-            circle_sequence_elements: Draw a separate rounded outline for each row
-            wrapping_distance: Gap outside note markers, in CSS pixels
-            fillet_corners: Round the enclosing polygon's corners
-            fillet_radius: Requested corner radius, in CSS pixels
-            chord_label_title: Lesson-defined caption above the chord buttons
-            highlight_chord_root: Color the current labelled chord's root with highlight1
-        """
-        if highlight_classes is None:
-            highlight_classes = {}
-
-        groups = []
-        sequence_steps = []
-        backgrounds = resolve_background_notes(background_notes, background_layers)
-        display_positions = dict.fromkeys(backgrounds)
-        for row in play_sequence or []:
-            step = parse_sequence_row(row)
-            positions = list(dict.fromkeys(step.notes))
-            notes = [{'stringName': s, 'fret': f} for s, f in positions]
-            if highlight_chord_root and step.chord_name:
-                root = re.match(r'^[A-G][#b]?', step.chord_name.replace('♯', '#').replace('♭', 'b'))
-                if root:
-                    for note, (s, f) in zip(notes, positions):
-                        string_num = STRING_ID.index(s)
-                        note['isRoot'] = root.group() in (
-                            FRETBOARD_NOTES_SHARP[string_num][f],
-                            FRETBOARD_NOTES_FLAT[string_num][f],
-                        )
-            sequence_steps.append({'notes': notes, 'chordName': step.chord_name})
-            if circle_sequence_elements and positions:
-                groups.append(notes)
-            for position in positions:
-                display_positions.setdefault(position, None)
-
-        # Select the appropriate note mapping based on sharp/flat preference
-        fretboard_notes = FRETBOARD_NOTES_SHARP if use_sharp else FRETBOARD_NOTES_FLAT
-
-        scale_data = []
-        for s, f in display_positions:
-            string_num = STRING_ID.index(s)
-            note_name = fretboard_notes[string_num][f]
-
-            # Look up highlight class BEFORE converting to musical symbols
-            highlight_class = highlight_classes.get(note_name)
-
-            # Convert # and b to HTML musical symbols
-            note_name = note_name.replace('#', '♯').replace('b', '♭')
-
-            # Check specifically for flat symbol (needs tighter spacing)
-            has_flat = '♭' in note_name
-            scale_data.append({
-                'stringName': s,
-                'fret': f,
-                'highlight': highlight_class,
-                'noteName': note_name,
-                'hasFlat': has_flat,
-                'isBackground': (s, f) in backgrounds,
-                **backgrounds.get((s, f), {'backgroundColor': None, 'backgroundLayers': []}),
-            })
-
-        # Send notes and groups together so a redraw never retains an old part's outlines.
-        json_data = json.dumps(json.dumps(scale_data))
-        groups_data = json.dumps(groups)
-        self.page().runJavaScript(
-            f"displayNotes({json_data}, {groups_data}, {json.dumps(wrapping_distance)}, "
-            f"{json.dumps(fillet_corners)}, {json.dumps(fillet_radius)}, "
-            f"{json.dumps(sequence_steps)}, {json.dumps(chord_label_title)});"
-        )
+        backgrounds = resolve_background_notes(part.background_notes, part.background_layers)
+        hidden = calculate_hidden_notes(part.play_sequence, backgrounds)
+        steps = prepare_sequence_steps(part.play_sequence, part.highlight_chord_root)
+        data = {
+            'backgroundNotes': prepare_background_notes(backgrounds, part.highlight_classes, use_sharp),
+            'hiddenNotes': prepare_hidden_notes(hidden, part.highlight_classes, use_sharp),
+            'sequenceSteps': steps,
+            'sequenceGroups': [step['notes'] for step in steps if step['notes']]
+                              if part.circle_sequence_elements else [],
+            'wrappingDistance': part.wrapping_distance,
+            'filletCorners': part.fillet_corners,
+            'filletRadius': part.fillet_radius,
+            'chordLabelTitle': chord_label_title,
+        }
+        self.page().runJavaScript(f"displayNotes({json.dumps(data)});")
 
     def highlight_sequence_step(self, index):
         """Select the same row's chord label and notes in one browser update."""

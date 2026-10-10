@@ -88,6 +88,10 @@ function setup(markerPositions = []) {
         return event;
     };
     return {window, container, panel, caption, selected, keydown, flushTimers, highlightHistory, markers,
+        renderSequence: (sequence, title) => {
+            window.renderChordSequence(sequence, title);
+            window.applyInitialSelection();
+        },
         focused: () => focused,
         pressed: () => container.children
         .flatMap((button, index) => button.classList.contains('selected') ? [index] : [])};
@@ -99,6 +103,17 @@ const steps = [
     {chordName: 'C', notes: [n('e', 3), n('B', 5), n('G', 5)]},
     {chordName: 'D', notes: [n('e', 5), n('B', 7), n('G', 7)]},
 ];
+
+test('rendering labels does not highlight notes until initial selection is requested', () => {
+    const app = setup();
+    app.window.renderChordSequence(steps);
+    assert.equal(app.container.children.length, 3);
+    assert.deepEqual(app.highlightHistory, []);
+    assert.deepEqual(app.pressed(), []);
+    app.window.applyInitialSelection();
+    assert.deepEqual(app.selected, steps[0].notes);
+    assert.deepEqual(app.pressed(), [0]);
+});
 
 test('playback-only markers hide between steps, rests and previews; pause retains the current note', () => {
     const app = setup([
@@ -118,7 +133,7 @@ test('playback-only markers hide between steps, rests and previews; pause retain
     assert.equal(background.style['--background-note-text'], '#fff');
     assert.equal(background.dataset.backgroundLayers, '[0,1]');
     assert.equal(visible(low), false);
-    app.window.renderChordSequence(sequence);
+    app.renderSequence(sequence);
     assert.ok(visible(background));
     app.container.children[1].listeners.mouseenter();
     assert.ok(visible(low));
@@ -152,7 +167,7 @@ test('playback-only markers hide between steps, rests and previews; pause retain
     app.window.setChordPlaybackState('stopped');
     assert.equal(visible(open), false);
     assert.equal(open.openStringLabel.hidden, false);
-    app.window.renderChordSequence([]);
+    app.renderSequence([]);
     assert.equal(visible(low), false);
 });
 
@@ -169,7 +184,7 @@ test('tutorial highlights only its three selected chord positions, including onl
         [{...n('D', 5), isRoot: true}, n('G', 4), n('B', 3)],
     ];
     for (const [index, notes] of parts.entries()) {
-        app.window.renderChordSequence([{chordName: 'G', notes}], 'Selected triad');
+        app.renderSequence([{chordName: 'G', notes}], 'Selected triad');
         const expected = index === 0 ? [3, 4, 5] : [2, 3, 4];
         assert.deepEqual(selectedIndices(), expected);
         assert.deepEqual(rootIndices(), [index === 0 ? 5 : 2]);
@@ -188,7 +203,7 @@ test('tutorial highlights only its three selected chord positions, including onl
 test('plain arrows move chord selection, notes and focus without scrolling', () => {
     const app = setup();
     const sequence = [steps[0], {notes: [n('e', 0)]}, steps[1], {...steps[2], chordName: 'G'}];
-    app.window.renderChordSequence(sequence);
+    app.renderSequence(sequence);
     const [first, second, third] = app.container.children;
     first.listeners.mouseenter();
     first.click();
@@ -212,7 +227,7 @@ test('plain arrows move chord selection, notes and focus without scrolling', () 
 
 test('arrows initialize selection and respect modifiers and playback', () => {
     const app = setup();
-    app.window.renderChordSequence(steps);
+    app.renderSequence(steps);
     app.window.clearNoteHighlights();
     app.keydown('ArrowRight');
     assert.deepEqual(app.selected, steps[0].notes);
@@ -229,17 +244,17 @@ test('arrows initialize selection and respect modifiers and playback', () => {
     assert.deepEqual(app.selected, steps[2].notes);
     app.window.setChordPlaybackState('playing');
     assert.deepEqual(app.selected, steps[1].notes);
-    app.window.renderChordSequence(steps);
+    app.renderSequence(steps);
     app.keydown('ArrowLeft');
     assert.deepEqual(app.selected, steps[0].notes);
-    app.window.renderChordSequence([]);
+    app.renderSequence([]);
     app.keydown('ArrowRight');
     assert.deepEqual(app.selected, []);
 });
 
 test('first chord is selected by default; clicks select the matching triad including shared notes', () => {
     const app = setup();
-    app.window.renderChordSequence(steps);
+    app.renderSequence(steps);
     assert.equal(app.container.hidden, false);
     assert.deepEqual(app.container.children.map(b => b.children[0].textContent), ['G', 'C', 'D']);
     assert.deepEqual(app.pressed(), [0]);
@@ -262,7 +277,7 @@ test('braced labels render two lines and still select the exact sequence row', (
         {...steps[2], chordName: 'D_{5-7}'},
         {chordName: 'G_{7-8}', notes: [n('e', 7), n('B', 8), n('G', 7)]},
     ];
-    app.window.renderChordSequence(sequence);
+    app.renderSequence(sequence);
     assert.deepEqual(app.container.children.map(b => b.children.map(s => s.textContent)),
         [['G', '3-4'], ['C', '3-5'], ['D', '5-7'], ['G', '7-8']]);
     const first = app.container.children[0];
@@ -288,14 +303,14 @@ test('brace text is literal, optional underscore is removed, and plain labels st
         ['G_{3-4', ['G_{3-4']], ['G_{<b>3-4</b>}', ['G', '<b>3-4</b>']],
     ];
     for (const [name, expected] of cases) {
-        app.window.renderChordSequence([{...steps[0], chordName: name}]);
+        app.renderSequence([{...steps[0], chordName: name}]);
         assert.deepEqual(app.container.children[0].children.map(s => s.textContent), expected);
     }
 });
 
 test('playback owns selection and stop clears both notes and labels', () => {
     const app = setup();
-    app.window.renderChordSequence(steps);
+    app.renderSequence(steps);
     app.container.children[2].click();
     app.window.setChordPlaybackState('playing');
     assert.deepEqual(app.pressed(), []);
@@ -318,7 +333,7 @@ test('duplicate names and unlabelled steps retain their original sequence indice
     const app = setup();
     const sequence = [steps[0], {notes: [n('e', 0)], chordName: null},
         {notes: [n('e', 7), n('B', 8), n('G', 7)], chordName: 'G'}];
-    app.window.renderChordSequence(sequence);
+    app.renderSequence(sequence);
     app.container.children[1].click();
     assert.deepEqual(app.selected, sequence[2].notes);
     assert.equal(app.container.children[1].attributes['aria-label'], 'G, step 3');
@@ -332,10 +347,10 @@ test('duplicate names and unlabelled steps retain their original sequence indice
 
 test('part switches reset selection and hide labels for legacy sequences', () => {
     const app = setup();
-    app.window.renderChordSequence(steps);
+    app.renderSequence(steps);
     app.window.setChordPlaybackState('playing');
     app.window.highlightSequenceStep(1);
-    app.window.renderChordSequence([{notes: [n('e', 0)], chordName: null}]);
+    app.renderSequence([{notes: [n('e', 0)], chordName: null}]);
     assert.equal(app.container.hidden, true);
     assert.equal(app.panel.hidden, true);
     assert.equal(app.container.children.length, 0);
@@ -350,22 +365,22 @@ test('part switches reset selection and hide labels for legacy sequences', () =>
 
 test('lesson caption updates, can be hidden, and defaults on the next lesson', () => {
     const app = setup();
-    app.window.renderChordSequence(steps, 'Chord <selected>');
+    app.renderSequence(steps, 'Chord <selected>');
     assert.equal(app.caption.textContent, 'Chord <selected>');
     assert.equal(app.caption.hidden, false);
     assert.equal(app.panel.hidden, false);
     assert.equal(app.container.attributes['aria-label'], 'Chord <selected>');
-    app.window.renderChordSequence(steps, '');
+    app.renderSequence(steps, '');
     assert.equal(app.caption.hidden, true);
     assert.equal(app.panel.hidden, false);
-    app.window.renderChordSequence(steps);
+    app.renderSequence(steps);
     assert.equal(app.caption.textContent, 'Triad playing');
     assert.equal(app.caption.hidden, false);
 });
 
 test('paused inspection preserves playback position for a resume state transition', () => {
     const app = setup();
-    app.window.renderChordSequence(steps);
+    app.renderSequence(steps);
     app.window.setChordPlaybackState('playing');
     app.window.highlightSequenceStep(1);
     app.window.setChordPlaybackState('paused');
@@ -384,7 +399,7 @@ test('hover previews the exact labelled step and leaving restores the selection'
         {chordName: null, notes: [n('e', 0)]},
         {chordName: 'G_{7-8}', notes: [n('e', 7), n('B', 8), n('G', 7)]},
     ];
-    app.window.renderChordSequence(sequence);
+    app.renderSequence(sequence);
     const [first, second] = app.container.children;
     first.listeners.mouseenter();
     assert.deepEqual(app.selected, sequence[0].notes);
@@ -410,7 +425,7 @@ test('hover previews the exact labelled step and leaving restores the selection'
 
 test('hover cannot override playback, including when playback starts during a preview', () => {
     const app = setup();
-    app.window.renderChordSequence(steps);
+    app.renderSequence(steps);
     const button = app.container.children[2];
     button.listeners.mouseenter();
     app.window.setChordPlaybackState('playing');
@@ -433,7 +448,7 @@ test('hover cannot override playback, including when playback starts during a pr
 
 test('stopping or changing parts during a preview clears the previous selection', () => {
     const app = setup();
-    app.window.renderChordSequence(steps);
+    app.renderSequence(steps);
     const [first, second] = app.container.children;
     first.click();
     second.listeners.mouseenter();
@@ -442,7 +457,7 @@ test('stopping or changing parts during a preview clears the previous selection'
     assert.deepEqual(app.selected, []);
     first.click();
     second.listeners.mouseenter();
-    app.window.renderChordSequence([steps[2]]);
+    app.renderSequence([steps[2]]);
     second.listeners.mouseleave();
     app.flushTimers();
     assert.deepEqual(app.selected, steps[2].notes);
@@ -451,7 +466,7 @@ test('stopping or changing parts during a preview clears the previous selection'
 
 test('moving across hover targets never flashes the clicked chord between previews', () => {
     const app = setup();
-    app.window.renderChordSequence(steps);
+    app.renderSequence(steps);
     const [first, second, third] = app.container.children;
     first.click();
     app.highlightHistory.length = 0;
@@ -469,7 +484,7 @@ test('moving across hover targets never flashes the clicked chord between previe
 test('pending hover restoration cannot override navigation, playback or a new part', () => {
     for (const action of ['navigate', 'play', 'stop', 'part']) {
         const app = setup();
-        app.window.renderChordSequence(steps);
+        app.renderSequence(steps);
         const button = app.container.children[2];
         button.listeners.mouseenter();
         button.listeners.mouseleave();
@@ -480,7 +495,7 @@ test('pending hover restoration cannot override navigation, playback or a new pa
         }
         if (action === 'stop') app.window.setChordPlaybackState('stopped');
         if (action === 'part') {
-            app.window.renderChordSequence([{chordName: null, notes: [n('e', 0)]}, steps[1]]);
+            app.renderSequence([{chordName: null, notes: [n('e', 0)]}, steps[1]]);
             assert.deepEqual(app.pressed(), [0]);
         }
         const historyLength = app.highlightHistory.length;

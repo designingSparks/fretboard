@@ -118,22 +118,7 @@ class FretboardPlayer(QObject):
 
         # Update fretboard display if it's already loaded
         if self.fretboard_view.isVisible():
-            # Get use_sharp setting from current lesson, default to True
-            use_sharp = self.current_lesson.use_sharp if self.current_lesson else True
-            self.fretboard_view.display_notes(
-                part.background_notes,
-                part.highlight_classes,
-                background_layers=part.background_layers,
-                use_sharp=use_sharp,
-                play_sequence=part.play_sequence,
-                circle_sequence_elements=part.circle_sequence_elements,
-                wrapping_distance=part.wrapping_distance,
-                fillet_corners=part.fillet_corners,
-                fillet_radius=part.fillet_radius,
-                highlight_chord_root=part.highlight_chord_root,
-                chord_label_title=(self.current_lesson.chord_label_title
-                                   if self.current_lesson else "Triad playing"),
-            )
+            self._display_current_part()
 
         print(f"Loaded part: {part.name}")
         print(f"  Background notes: {len(part.background_notes)}")
@@ -142,6 +127,15 @@ class FretboardPlayer(QObject):
 
         # Emit signal to update subtitle with part name
         self.subtitle_changed.emit(part.name)
+
+    def _display_current_part(self):
+        """Shared initialization for immediate loads and browser-ready callbacks."""
+        lesson = self.current_lesson
+        self.fretboard_view.display_notes(
+            self._current_part,
+            use_sharp=lesson.use_sharp if lesson else True,
+            chord_label_title=lesson.chord_label_title if lesson else "Triad playing",
+        )
 
     def next_part(self):
         """
@@ -255,22 +249,7 @@ class FretboardPlayer(QObject):
             if self.current_lesson:
                 self.fretboard_view.set_title(self.current_lesson.name)
             print(f"Displaying part: {self._current_part.name}")
-            # Get use_sharp setting from current lesson, default to True
-            use_sharp = self.current_lesson.use_sharp if self.current_lesson else True
-            self.fretboard_view.display_notes(
-                self._current_part.background_notes,
-                self._current_part.highlight_classes,
-                background_layers=self._current_part.background_layers,
-                use_sharp=use_sharp,
-                play_sequence=self._current_part.play_sequence,
-                circle_sequence_elements=self._current_part.circle_sequence_elements,
-                wrapping_distance=self._current_part.wrapping_distance,
-                fillet_corners=self._current_part.fillet_corners,
-                fillet_radius=self._current_part.fillet_radius,
-                highlight_chord_root=self._current_part.highlight_chord_root,
-                chord_label_title=(self.current_lesson.chord_label_title
-                                   if self.current_lesson else "Triad playing"),
-            )
+            self._display_current_part()
             # Emit subtitle signal now that the view is loaded
             self.subtitle_changed.emit(self._current_part.name)
             if self.audio_engine.is_playing:
@@ -284,7 +263,8 @@ if __name__ == "__main__":
     from settings import ConfigManager
     from ui.lesson_browser import LessonBrowser
 
-    os.environ["QTWEBENGINE_REMOTE_DEBUGGING"] = "8080"
+    if "__compiled__" not in globals():
+        os.environ["QTWEBENGINE_REMOTE_DEBUGGING"] = "8080"
     app = QApplication(sys.argv)
 
     # Initialize settings
@@ -394,7 +374,10 @@ if __name__ == "__main__":
     print("="*70)
 
     # For an existing lesson: player.load('lessons', 'c_maj_triad')
-    default_lesson = player.load('tutorials', 'Gmaj_C_shape')
+    if "__compiled__" in globals():
+        default_lesson = player.load('lessons', 'c_maj_triad')
+    else:
+        default_lesson = player.load('tutorials', 'Gmaj_C_shape')
     if default_lesson:
         print(f"✓ Successfully loaded: {default_lesson.name}")
     else:

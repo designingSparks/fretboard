@@ -49,15 +49,14 @@ Note: VS Code debugging always uses the project directory as root, so all relati
 ### Production Build
 Build a standalone macOS application using Nuitka:
 ```bash
-python3 -m nuitka --mode=app \
-    --enable-plugin=pyside6 \
-    --macos-app-icon=./icon/icon.icns \
-    --output-dir=build \
-    --include-data-dir=./clean=clean \
-    ./main.py
+python -m pip install -r requirements-build.txt
+python build_nuitka.py
 ```
 
-The `--include-data-dir` flag copies the `clean` directory (containing audio files) into the macOS application package.
+The build script includes the player resources, audio samples, and compiled lessons.
+It excludes `main_export.py` and `tutorials/`; the packaged app starts with
+`c_maj_triad`. Output and the compilation report are in `build/nuitka/`.
+See `Readme.md` for environment setup and other platforms.
 
 ### Creating Icons
 Use the `make_icon.sh` script in the `icon` directory to create application icons.

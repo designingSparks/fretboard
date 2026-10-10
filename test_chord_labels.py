@@ -30,8 +30,8 @@ class FakeView(QObject):
     def set_title(self, title):
         self.title = title
 
-    def display_notes(self, *args, **kwargs):
-        self.calls.append(('display', kwargs['play_sequence']))
+    def display_notes(self, part, **kwargs):
+        self.calls.append(('display', part.play_sequence))
         self.caption = kwargs['chord_label_title']
 
     def set_playback_state(self, state):
@@ -66,12 +66,9 @@ class ChordLabelTests(unittest.TestCase):
         for part in lesson.parts:
             scripts = []
             view = SimpleNamespace(page=lambda: SimpleNamespace(runJavaScript=scripts.append))
-            FretboardView.display_notes(
-                view, part.background_notes, play_sequence=part.play_sequence,
-                highlight_chord_root=part.highlight_chord_root,
-            )
-            args = json.loads('[' + scripts[0][len('displayNotes('):-2] + ']')
-            for step in args[5]:
+            FretboardView.display_notes(view, part)
+            args = json.loads(scripts[0][len('displayNotes('):-2])
+            for step in args['sequenceSteps']:
                 with self.subTest(part=part.name, step=step):
                     roots = [note for note in step['notes'] if note.get('isRoot')]
                     self.assertEqual(len(roots), 1)
@@ -145,16 +142,17 @@ class ChordLabelTests(unittest.TestCase):
     def test_bridge_sends_labels_without_circles_and_renders_missing_notes(self):
         scripts = []
         view = SimpleNamespace(page=lambda: SimpleNamespace(runJavaScript=scripts.append))
-        FretboardView.display_notes(view, [('e', 3)], chord_label_title='Chord selected', play_sequence=[
+        part = Part('Chords', [('e', 3)], play_sequence=[
             [('e', 3), ('B', 3), ('G', 4), 'G', 1000],
             [('e', 3), ('B', 5), ('G', 5), 'C', 1000],
         ])
-        args = json.loads('[' + scripts[0][len('displayNotes('):-2] + ']')
-        self.assertEqual(args[1], [])
-        self.assertEqual(len(json.loads(args[0])), 5)
-        self.assertEqual([s['chordName'] for s in args[5]], ['G', 'C'])
-        self.assertEqual(len(args[5][1]['notes']), 3)
-        self.assertEqual(args[6], 'Chord selected')
+        FretboardView.display_notes(view, part, chord_label_title='Chord selected')
+        args = json.loads(scripts[0][len('displayNotes('):-2])
+        self.assertEqual(args['sequenceGroups'], [])
+        self.assertEqual(len((args['backgroundNotes'] + args['hiddenNotes'])), 5)
+        self.assertEqual([s['chordName'] for s in args['sequenceSteps']], ['G', 'C'])
+        self.assertEqual(len(args['sequenceSteps'][1]['notes']), 3)
+        self.assertEqual(args['chordLabelTitle'], 'Chord selected')
         FretboardView.highlight_sequence_step(view, 1)
         FretboardView.set_playback_state(view, 'playing')
         self.assertEqual(scripts[-2:], ['highlightSequenceStep(1);', 'setChordPlaybackState("playing");'])

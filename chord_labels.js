@@ -61,7 +61,9 @@
         button.focus({preventScroll: true});
     };
 
+    // Render labels and reset their state; note selection is a separate init step.
     window.renderChordSequence = function(sequence = [], title = 'Triad playing') {
+        window.clearChordSelection();
         steps = sequence;
         playbackState = 'stopped';
         playbackIndex = null;
@@ -115,6 +117,9 @@
         });
         container.hidden = buttons.length === 0;
         panel.hidden = buttons.length === 0;
+    };
+
+    window.applyInitialSelection = function() {
         window.clearNoteHighlights();
         if (buttons.length) selectStep(buttons[0].rowIndex);
     };

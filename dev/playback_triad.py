@@ -212,7 +212,7 @@ class FretboardPlayer(QWidget):
             highlight_class = HIGHLIGHTS.get(note_name)
             scale_data.append({'stringName': s, 'fret': f, 'highlight': highlight_class})
         json_data = json.dumps(scale_data)
-        self.web_view.page().runJavaScript(f"displayNotes('{json_data}');")
+        self.web_view.page().runJavaScript(f"displayNotes({{backgroundNotes: {json_data}}});")
 
 
     def init_midi(self):
