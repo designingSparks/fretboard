@@ -105,7 +105,7 @@ PART1_NOTES = _display_notes(PART1_SEQUENCE)
 
 part1 = Part(
     name="1. Strings G, B, e",
-    notes_to_highlight=PART1_NOTES,
+    background_notes=PART1_NOTES,
     play_sequence=PART1_SEQUENCE,
     highlight_chord_root=True,
     circle_sequence_elements=False,
@@ -140,7 +140,7 @@ PART2_NOTES = _display_notes(PART2_SEQUENCE)
 
 part2 = Part(
     name="2. Strings D, G, B",
-    notes_to_highlight=PART2_NOTES,
+    background_notes=PART2_NOTES,
     play_sequence=PART2_SEQUENCE,
     highlight_chord_root=True,
     circle_sequence_elements=False,
@@ -172,7 +172,7 @@ PART3_NOTES = _display_notes(PART3_SEQUENCE)
 
 part3 = Part(
     name="3. Strings A, D, G",
-    notes_to_highlight=PART3_NOTES,
+    background_notes=PART3_NOTES,
     play_sequence=PART3_SEQUENCE,
     highlight_chord_root=True,
     circle_sequence_elements=False,
@@ -204,7 +204,7 @@ PART4_NOTES = _display_notes(PART4_SEQUENCE)
 
 part4 = Part(
     name="4. Strings E, A, D",
-    notes_to_highlight=PART4_NOTES,
+    background_notes=PART4_NOTES,
     play_sequence=PART4_SEQUENCE,
     highlight_chord_root=True,
     circle_sequence_elements=False,

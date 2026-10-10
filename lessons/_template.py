@@ -65,7 +65,7 @@ PART1_PLAY = [
 # Create the Part object
 part1 = Part(
     name="Part 1: Your Description Here",
-    notes_to_highlight=PART1_HIGHLIGHT,
+    background_notes=PART1_HIGHLIGHT,
     play_sequence=PART1_PLAY,
     highlight_classes={'C': 'highlight1'},  # Optional: highlight specific notes
     description='Practice slowly at first',
@@ -95,7 +95,7 @@ PART2_PLAY = [
 
 part2 = Part(
     name="Part 2: Your Description Here",
-    notes_to_highlight=PART2_HIGHLIGHT,
+    background_notes=PART2_HIGHLIGHT,
     play_sequence=PART2_PLAY,
 )
 
@@ -127,7 +127,7 @@ lesson = Lesson(
 #
 # part1 = Part(
 #     name="Position 4",
-#     notes_to_highlight=C_MAJOR_POS4_HIGHLIGHT,
+#     background_notes=C_MAJOR_POS4_HIGHLIGHT,
 #     play_sequence=create_play_sequence(C_MAJOR_POS4_HIGHLIGHT, duration=500)
 # )
 
@@ -156,7 +156,7 @@ lesson = Lesson(
 #
 # part1 = Part(
 #     name="Position 1 (E Shape)",
-#     notes_to_highlight=G_MAJ_PENT_POS1,
+#     background_notes=G_MAJ_PENT_POS1,
 #     play_sequence=PART1_PLAY
 # )
 #

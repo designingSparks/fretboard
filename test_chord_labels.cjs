@@ -5,14 +5,16 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 
-function setup() {
+function setup(markerPositions = []) {
     let focused = null;
     class Element {
         constructor() {
             this.children = []; this.attributes = {}; this.dataset = {}; this.listeners = {};
+            this.style = {setProperty(name, value) { this[name] = value; }};
             this.disabled = false;
             const classes = new Set();
             this.classList = {
+                add: key => classes.add(key),
                 toggle: (key, selected) => selected ? classes.add(key) : classes.delete(key),
                 remove: key => classes.delete(key),
                 contains: key => classes.has(key),
@@ -38,6 +40,15 @@ function setup() {
         clearNoteHighlights: () => { selected.length = 0; window.clearChordSelection(); },
     };
     const elements = {'chord-labels': container, 'chord-panel': panel, 'chord-label-title': caption};
+    const markers = new Map(markerPositions.map(([string, fret]) => {
+        const note = new Element();
+        note.classList.add('inactive');
+        if (fret === 0) note.openStringLabel = {hidden: false};
+        const selector = fret === 0
+            ? `td.string-label[data-string="${string}"] .open-string-note`
+            : `td.fret[data-string="${string}"][data-fret="${fret}"] .note`;
+        return [selector, note];
+    }));
     const listeners = {};
     const timers = new Map();
     let timerId = 0;
@@ -48,22 +59,35 @@ function setup() {
         }
     };
     const context = {window,
+        console: {log() {}, error(message) { throw new Error(message); }},
+        GUITAR_TUNING: ['e', 'B', 'G', 'D', 'A', 'E'].map(name => ({name})),
+        clearChordSelection: () => window.clearChordSelection(),
         setTimeout: callback => { timers.set(++timerId, callback); return timerId; },
         clearTimeout: id => timers.delete(id),
         document: {
         getElementById: id => elements[id], createElement: () => new Element(),
+        querySelector: selector => markers.get(selector),
+        querySelectorAll: selector => [...markers.values()].filter(note =>
+            selector !== '[data-chord-root]' || note.dataset.chordRoot),
         addEventListener: (name, handler) => { listeners[name] = handler; },
     }};
     vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'chord_labels.js'), 'utf8'), context);
     const main = fs.readFileSync(path.join(__dirname, 'main.js'), 'utf8');
     vm.runInNewContext(main.slice(0, main.indexOf('// --- 1. Configuration ---')), context);
+    if (markerPositions.length) {
+        vm.runInNewContext(main.slice(main.indexOf('function clearChordRootHighlights()'),
+            main.indexOf('// --- Animation Trigger ---')), context);
+        [...markers.values()].forEach((marker, index) => {
+            context.initializeNoteAppearance(marker, markerPositions[index][2] || {});
+        });
+    }
     const keydown = (key, options = {}) => {
         const event = new Event('keydown', {cancelable: true});
         Object.assign(event, {key, ...options});
         listeners.keydown(event);
         return event;
     };
-    return {window, container, panel, caption, selected, keydown, flushTimers, highlightHistory,
+    return {window, container, panel, caption, selected, keydown, flushTimers, highlightHistory, markers,
         focused: () => focused,
         pressed: () => container.children
         .flatMap((button, index) => button.classList.contains('selected') ? [index] : [])};
@@ -75,6 +99,91 @@ const steps = [
     {chordName: 'C', notes: [n('e', 3), n('B', 5), n('G', 5)]},
     {chordName: 'D', notes: [n('e', 5), n('B', 7), n('G', 7)]},
 ];
+
+test('playback-only markers hide between steps, rests and previews; pause retains the current note', () => {
+    const app = setup([
+        [0, 3, {isBackground: true, backgroundColor: '#123456', backgroundLayers: [0, 1]}],
+        [5, 7, {isBackground: false}],
+        [2, 0, {isBackground: false}],
+    ]);
+    const [background, low, open] = [...app.markers.values()];
+    const visible = marker => !marker.classList.contains('note-hidden');
+    const sequence = [
+        {chordName: 'G', notes: [{...n('e', 3), isRoot: true}]},
+        {chordName: 'G', notes: [n('E', 7)]},
+        {chordName: 'G', notes: [{...n('G', 0), isRoot: true}]},
+        {notes: []},
+    ];
+    assert.equal(background.style['--background-note-color'], '#123456');
+    assert.equal(background.style['--background-note-text'], '#fff');
+    assert.equal(background.dataset.backgroundLayers, '[0,1]');
+    assert.equal(visible(low), false);
+    app.window.renderChordSequence(sequence);
+    assert.ok(visible(background));
+    app.container.children[1].listeners.mouseenter();
+    assert.ok(visible(low));
+    app.container.children[1].listeners.mouseleave();
+    app.flushTimers();
+    assert.equal(visible(low), false);
+    app.window.setChordPlaybackState('playing');
+    app.window.highlightSequenceStep(1);
+    assert.ok(visible(low));
+    app.window.highlightSequenceStep(2);
+    assert.equal(visible(low), false);
+    assert.ok(visible(open));
+    assert.equal(open.openStringLabel.hidden, true);
+    app.window.setChordPlaybackState('paused');
+    assert.ok(visible(open));
+    app.container.children[1].click();
+    assert.ok(visible(low));
+    assert.equal(visible(open), false);
+    app.window.setChordPlaybackState('playing');
+    assert.ok(visible(open));
+    assert.equal(visible(low), false);
+    app.window.highlightSequenceStep(3);
+    assert.equal(visible(open), false);
+    assert.equal(open.openStringLabel.hidden, false);
+    assert.ok(visible(background));
+    assert.ok(background.classList.contains('inactive'));
+    assert.equal(background.classList.contains('highlight1'), false);
+    assert.equal(background.style['--background-note-color'], '#123456');
+    app.window.highlightNote('G', 0);
+    assert.ok(visible(open));
+    app.window.setChordPlaybackState('stopped');
+    assert.equal(visible(open), false);
+    assert.equal(open.openStringLabel.hidden, false);
+    app.window.renderChordSequence([]);
+    assert.equal(visible(low), false);
+});
+
+test('tutorial highlights only its three selected chord positions, including only that triad root', () => {
+    // Markers in low E to high e order; all belong to the same barre chord.
+    const app = setup([[5, 3], [4, 5], [3, 5], [2, 4], [1, 3], [0, 3]]);
+    const markers = [...app.markers.values()];
+    const selectedIndices = () => markers.flatMap((note, index) =>
+        note.classList.contains('inactive') ? [] : [index]);
+    const rootIndices = () => markers.flatMap((note, index) =>
+        note.classList.contains('highlight1') ? [index] : []);
+    const parts = [
+        [n('G', 4), n('B', 3), {...n('e', 3), isRoot: true}],
+        [{...n('D', 5), isRoot: true}, n('G', 4), n('B', 3)],
+    ];
+    for (const [index, notes] of parts.entries()) {
+        app.window.renderChordSequence([{chordName: 'G', notes}], 'Selected triad');
+        const expected = index === 0 ? [3, 4, 5] : [2, 3, 4];
+        assert.deepEqual(selectedIndices(), expected);
+        assert.deepEqual(rootIndices(), [index === 0 ? 5 : 2]);
+        app.window.setChordPlaybackState('playing');
+        app.window.highlightSequenceStep(0);
+        assert.deepEqual(selectedIndices(), expected);
+        app.window.setChordPlaybackState('stopped');
+        assert.deepEqual(selectedIndices(), []);
+        assert.deepEqual(rootIndices(), []);
+        app.container.children[0].click();
+        assert.deepEqual(selectedIndices(), expected);
+        assert.deepEqual(rootIndices(), [index === 0 ? 5 : 2]);
+    }
+});
 
 test('plain arrows move chord selection, notes and focus without scrolling', () => {
     const app = setup();

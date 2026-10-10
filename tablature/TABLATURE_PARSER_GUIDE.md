@@ -295,7 +295,7 @@ Print a Part object as formatted Python code for copy/paste into lesson files.
 **Args:**
 - `part` (Part): The Part object to print
 - `part_name_variable` (str): Variable name for the part (default: 'part1')
-- `notes_constant` (str): Constant name for notes_to_highlight array (default: 'PART1_NOTES')
+- `notes_constant` (str): Constant name for background_notes array (default: 'PART1_NOTES')
 - `sequence_constant` (str): Constant name for play_sequence array (default: 'PART1_SEQUENCE')
 
 **Example:**
@@ -321,7 +321,7 @@ PART1_SEQUENCE = [
 
 part1 = Part(
     name="Intro Riff",
-    notes_to_highlight=PART1_NOTES,
+    background_notes=PART1_NOTES,
     play_sequence=PART1_SEQUENCE,
     description=""
 )

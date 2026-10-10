@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 import math
 from typing import List, Tuple, Dict, Any
 from models.sequence_step import SequenceStep, parse_sequence_row
+from models.background_layer import BackgroundLayer, resolve_background_notes
 
 
 @dataclass
@@ -21,8 +22,13 @@ class Part:
 
     Attributes:
         name: Display name for this part (e.g., "Position 4 - Ascending")
-        notes_to_highlight: List of (string, fret) tuples to display on fretboard
-                           These are shown in grey/inactive state
+        background_notes: List of (string, fret) tuples to display on fretboard
+                          These are shown in grey/inactive state
+        background_layers: Ordered colored BackgroundLayer objects. The FIRST
+                           layer containing a (string, fret) position wins;
+                           later layers cannot overwrite its background color.
+                           background_notes supplies the uncolored fallback.
+                           Both backgrounds may be empty for playback-only parts.
         play_sequence: SequenceStep objects with named notes, duration_ms, and optional
                        chord_name, shape, and position_group fields. Legacy lists are
                        accepted and converted to SequenceStep when the Part is created.
@@ -40,7 +46,7 @@ class Part:
         >>> # Single note sequence
         >>> part = Part(
         ...     name="C Major Scale",
-        ...     notes_to_highlight=[('A', 3), ('A', 5), ('D', 2)],
+        ...     background_notes=[('A', 3), ('A', 5), ('D', 2)],
         ...     play_sequence=[SequenceStep(notes=(note,), duration_ms=500)
         ...                    for note in [('A', 3), ('A', 5), ('D', 2)]]
         ... )
@@ -48,13 +54,13 @@ class Part:
         >>> # Chord sequence
         >>> part = Part(
         ...     name="C Major Triad",
-        ...     notes_to_highlight=[('e', 0), ('B', 1), ('G', 0)],
+        ...     background_notes=[('e', 0), ('B', 1), ('G', 0)],
         ...     play_sequence=[SequenceStep(notes=(('e', 0), ('B', 1), ('G', 0)),
         ...                                 duration_ms=1000, chord_name='C')]
         ... )
     """
     name: str
-    notes_to_highlight: List[Tuple[str, int]]
+    background_notes: List[Tuple[str, int]]
     play_sequence: List[SequenceStep]
     highlight_classes: Dict[str, str] = field(default_factory=dict)
     description: str = ""
@@ -63,14 +69,16 @@ class Part:
     fillet_corners: bool = False
     fillet_radius: float = 24.0
     highlight_chord_root: bool = False
+    background_layers: List[BackgroundLayer] = field(default_factory=list)
 
     def __post_init__(self):
         """Validate the part data."""
         if not self.name:
             raise ValueError("Part name cannot be empty")
 
-        if not self.notes_to_highlight:
-            raise ValueError(f"Part '{self.name}' must have notes_to_highlight")
+        if not isinstance(self.background_layers, (list, tuple)) or not all(
+                isinstance(layer, BackgroundLayer) for layer in self.background_layers):
+            raise ValueError('background_layers must contain BackgroundLayer objects')
 
         if not self.play_sequence:
             raise ValueError(f"Part '{self.name}' must have play_sequence")
@@ -87,7 +95,7 @@ class Part:
 
         # Validate string names
         valid_strings = {'e', 'B', 'G', 'D', 'A', 'E'}
-        for string_name, fret in self.notes_to_highlight:
+        for string_name, fret in self.background_notes:
             if string_name not in valid_strings:
                 raise ValueError(
                     f"Invalid string name '{string_name}' in part '{self.name}'. "
@@ -98,6 +106,10 @@ class Part:
                     f"Invalid fret {fret} in part '{self.name}'. "
                     f"Must be integer between 0 and 24"
                 )
+
+    def get_background_positions(self):
+        """Unique positions from plain notes and colored layers, in author order."""
+        return list(resolve_background_notes(self.background_notes, self.background_layers))
 
     def get_duration_ms(self) -> int:
         """

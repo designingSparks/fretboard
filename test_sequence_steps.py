@@ -43,7 +43,7 @@ class SequenceStepTests(unittest.TestCase):
     def test_legacy_and_named_steps_can_share_a_part(self):
         step = SequenceStep(notes=(('e', 3), ('B', 3), ('G', 4)), duration_ms=1000,
                             chord_name='G', shape='E', position_group=1)
-        part = Part(name='Mixed', notes_to_highlight=[('e', 3)],
+        part = Part(name='Mixed', background_notes=[('e', 3)],
                     play_sequence=[step, [('e', 0), 500], [250]])
         self.assertTrue(all(isinstance(row, SequenceStep) for row in part.play_sequence))
         self.assertIs(part.play_sequence[0], step)
@@ -94,7 +94,7 @@ class SequenceStepTests(unittest.TestCase):
     def test_generated_lesson_code_preserves_named_metadata(self):
         step = SequenceStep(notes=(('e', 3), ('B', 3), ('G', 4)), duration_ms=1000,
                             chord_name='G', shape='E', position_group=1)
-        part = Part(name='Generated', notes_to_highlight=list(step.notes), play_sequence=[step])
+        part = Part(name='Generated', background_notes=list(step.notes), play_sequence=[step])
         output = io.StringIO()
         with redirect_stdout(output):
             print_lesson_code([part], lesson_name='Generated lesson')

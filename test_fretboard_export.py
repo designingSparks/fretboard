@@ -21,7 +21,8 @@ from PySide6.QtWidgets import QApplication
 
 from fretboard_export import FretboardExporter, SVG_NS, add_svg_watermark, outline_svg_text, part_filename, save_png, visible_part_content
 from models.lesson_loader import load_lesson
-from models.lesson_model import Lesson
+from models.lesson_model import Lesson, Part
+from models.background_layer import BackgroundLayer, resolve_background_notes
 from models.sequence_step import SequenceStep
 
 
@@ -48,6 +49,7 @@ class FakeView:
         self.parts = []
         self.ready = False
         self.polls = 0
+        self.scripts = []
 
     def page(self):
         return self
@@ -57,6 +59,7 @@ class FakeView:
         self.ready = False
 
     def runJavaScript(self, script, callback):
+        self.scripts.append(script)
         if script.startswith('JSON.stringify'):
             self.polls += 1
             value = json.dumps({'svg': SAMPLE, 'geometry': GEOMETRY}) if self.ready else 'null'
@@ -78,6 +81,34 @@ class ExportTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             part_filename('../outside', lesson.parts[0])
 
+    def test_export_passes_filtered_layers_without_changing_precedence(self):
+        part = Part('Layers', [], [[('e', 3), 1000]], background_layers=[
+            BackgroundLayer(notes=[('E', 3), ('B', 20)], color='#123'),
+            BackgroundLayer(notes=[('E', 3), ('A', 5)], color='#456'),
+        ])
+        view = FakeView()
+        exporter = FretboardExporter(view)
+        loop = QEventLoop()
+        failures = []
+        exporter.finished.connect(loop.quit)
+        exporter.failed.connect(lambda error: (failures.append(error), loop.quit()))
+        timeout = QTimer()
+        timeout.setSingleShot(True)
+        timeout.timeout.connect(loop.quit)
+        timeout.start(5000)
+        with tempfile.TemporaryDirectory() as directory, patch(
+                'fretboard_export.load_lesson', return_value=Lesson('Layers', [part])):
+            exporter.export_lesson('layers', directory, formats=('svg',))
+            loop.exec()
+        timeout.stop()
+        self.assertFalse(failures)
+        self.assertFalse(exporter.busy)
+        notes, _, options = view.parts[0]
+        layers = options['background_layers']
+        self.assertEqual([layer.notes for layer in layers], [(('E', 3),), (('E', 3), ('A', 5))])
+        self.assertEqual(resolve_background_notes(notes, layers)[('E', 3)]['backgroundColor'], '#123')
+        self.assertIn(('B', 20), part.background_layers[0].notes)  # Source remains intact.
+
     def test_last_fret_triads_are_omitted_and_logged_once(self):
         lesson = load_lesson('g_maj_triad')
         with self.assertLogs('glead.fretboard_export', level='WARNING') as logs:
@@ -95,7 +126,7 @@ class ExportTests(unittest.TestCase):
         base = load_lesson('g_maj_triad').parts[0]
         visible = SequenceStep(notes=(('e', 3), ('B', 3), ('G', 4)), duration_ms=1000)
         skipped = SequenceStep(notes=(('e', 3), ('B', 15), ('G', 12)), duration_ms=1000)
-        part = replace(base, notes_to_highlight=list(dict.fromkeys(visible.notes + skipped.notes)),
+        part = replace(base, background_notes=list(dict.fromkeys(visible.notes + skipped.notes)),
                        play_sequence=[visible, skipped])
         with self.assertLogs('glead.fretboard_export', level='WARNING'):
             notes, steps = visible_part_content(part, 15)
@@ -106,7 +137,7 @@ class ExportTests(unittest.TestCase):
         part = load_lesson('g_maj_triad').parts[0]
         notes, steps = visible_part_content(part, 16, include_last_fret=True)
         self.assertEqual(len(steps), 4)
-        self.assertEqual(set(notes), set(part.notes_to_highlight))
+        self.assertEqual(set(notes), set(part.background_notes))
         self.assertIn(('G', 16), steps[-1].notes)
         with self.assertLogs('glead.fretboard_export', level='WARNING'):
             notes, steps = visible_part_content(part, 15, include_last_fret=True)
@@ -332,6 +363,37 @@ class ExportTests(unittest.TestCase):
             self.assertFalse(view.parts)
             self.assertFalse(list(Path(directory).iterdir()))
 
+    def test_export_highlighting_overrides_colors_without_changing_lesson(self):
+        lesson = load_lesson('g_maj_triad')
+        original_colors = [dict(part.highlight_classes) for part in lesson.parts]
+        for active, colors in [(False, None), (True, {'G': 'highlight3', 'B': 'highlight2'}),
+                               (True, {})]:
+            with self.subTest(active=active, colors=colors), tempfile.TemporaryDirectory() as directory:
+                view = FakeView()
+                exporter = FretboardExporter(view)
+                failures = []
+                loop = QEventLoop()
+                exporter.finished.connect(loop.quit)
+                exporter.failed.connect(lambda error: (failures.append(error), loop.quit()))
+                timeout = QTimer()
+                timeout.setSingleShot(True)
+                timeout.timeout.connect(loop.quit)
+                timeout.start(5000)
+                with patch('fretboard_export.load_lesson', return_value=lesson):
+                    exporter.export_lesson('g_maj_triad', directory, formats=('svg',),
+                                           highlight_notes=active, highlight_classes=colors)
+                    loop.exec()
+                timeout.stop()
+                self.assertFalse(failures)
+                self.assertFalse(exporter.busy)
+                self.assertEqual([part[1] for part in view.parts],
+                                 original_colors if colors is None else [colors] * 4)
+                preparations = [script for script in view.scripts if 'fretboardExport.prepare(' in script
+                                and not script.startswith('/*')]
+                self.assertEqual(len(preparations), 4)
+                self.assertTrue(all(f'prepare({json.dumps(active)})' in script for script in preparations))
+                self.assertEqual([part.highlight_classes for part in lesson.parts], original_colors)
+
     @unittest.skipUnless(os.environ.get('FRETBOARD_BROWSER_TEST') == '1', 'Opt-in Qt browser integration test')
     def test_real_browser_exports_all_parts(self):
         from ui.fretboard_view import FretboardView
@@ -346,6 +408,7 @@ class ExportTests(unittest.TestCase):
             exporter.failed.connect(lambda error: (failures.append(error), loop.quit()))
             view.view_loaded.connect(lambda: exporter.export_lesson(
                 'g_maj_triad', directory, circle_triads=True,
+                highlight_notes=True, highlight_classes={'G': 'highlight1', 'B': 'highlight2'},
                 watermark_text='learnleadfast.ch', watermark_between=PLACEMENTS))
             timeout = QTimer()
             timeout.setSingleShot(True)
@@ -364,6 +427,10 @@ class ExportTests(unittest.TestCase):
                     self.assertLess(float(root.attrib['width']), 1600)
                     self.assertLess(float(root.attrib['height']), 650)
                     self.assertEqual(len(root.findall(f'.//{{{SVG_NS}}}ellipse')), 7 + 12)
+                    fills = [circle.attrib['fill'] for circle in root.findall(f'.//{{{SVG_NS}}}ellipse')]
+                    self.assertEqual(fills.count('rgb(231, 76, 60)'), 4)
+                    self.assertEqual(fills.count('rgb(142, 68, 173)'), 4)
+                    self.assertEqual(fills.count('rgb(68, 68, 68)'), 4)
                     self.assertTrue(root.findall(f'.//{{{SVG_NS}}}path[@aria-label="16"]'))
                     self.assertFalse(root.findall(f'.//{{{SVG_NS}}}path[@aria-label="17"]'))
                     self.assertEqual(len(root.findall(f'.//{{{SVG_NS}}}path[@data-sequence-group]')),

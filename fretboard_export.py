@@ -6,6 +6,7 @@ then the same standalone SVG is used to produce the PNG.
 
 import json
 import math
+from dataclasses import replace
 from collections.abc import Mapping
 from pathlib import Path
 import re
@@ -29,7 +30,7 @@ def part_filename(lesson_name, part):
     """Use the lesson module name and all displayed strings, low to high."""
     if not re.fullmatch(r'[A-Za-z0-9_-]+', lesson_name):
         raise ValueError('Lesson name must be a filename stem without a directory')
-    strings = {string for string, _ in part.notes_to_highlight}
+    strings = {string for string, _ in part.get_background_positions()}
     strings.update(string for step in part.play_sequence for string, _ in step.notes)
     suffix = ''.join(string for string in ('E', 'A', 'D', 'G', 'B', 'e') if string in strings)
     return f'{lesson_name}_{suffix}'
@@ -56,7 +57,7 @@ def visible_part_content(part, last_fret, *, include_last_fret=False):
         else:
             sequence.append(step)
     retained_notes = {note for step in sequence for note in step.notes}
-    notes = [note for note in part.notes_to_highlight
+    notes = [note for note in part.get_background_positions()
              if note[1] <= max_fret and (note not in omitted_notes or note in retained_notes)]
     return notes, sequence
 
@@ -192,13 +193,22 @@ class FretboardExporter(QObject):
 
     def export_lesson(self, lesson_name, output_dir=EXPORT_DIR, formats=('svg', 'png'),
                       png_scale=2, *, circle_triads=None, watermark_text=None,
-                      watermark_between=None, watermark_opacity=0.25):
+                      watermark_between=None, watermark_opacity=0.25,
+                      highlight_notes=False, highlight_classes=None):
         """Export all parts, optionally overriding their boundary setting.
 
         circle_triads=True enables rounded boundaries for every part; False disables
         them. None (the default) preserves each part's circle_sequence_elements.
         None also preserves its corner style. Spacing and corner radius always
         come from the part (defaults: 8px clearance and a 24px radius).
+
+        highlight_notes=True uses active playback colors for every displayed
+        note, including open strings. False keeps the faded appearance.
+        highlight_classes overrides every part's note-name-to-CSS-class mapping
+        (e.g. {'G': 'highlight1'}). None preserves each part's mapping; {} removes
+        all fixed colors. Use highlight1 (red), highlight2 (purple), highlight3
+        (blue); unmapped notes use dark grey when active. Note names follow the
+        lesson's sharp/flat spelling (e.g. 'F#' or 'Bb').
 
         watermark_between maps filename suffixes (e.g. 'GBe') to adjacent string
         pairs (e.g. ('E', 'A')). Pair order does not matter; E is low, e is high.
@@ -213,6 +223,16 @@ class FretboardExporter(QObject):
             if circle_triads is not None and not isinstance(circle_triads, bool):
                 raise ValueError('circle_triads must be True, False, or None')
             self.circle_triads = circle_triads
+            if not isinstance(highlight_notes, bool):
+                raise ValueError('highlight_notes must be True or False')
+            if highlight_classes is not None and (
+                    not isinstance(highlight_classes, Mapping)
+                    or any(not isinstance(note, str) or not isinstance(css, str)
+                           or not css or any(char.isspace() for char in css)
+                           for note, css in highlight_classes.items())):
+                raise ValueError('highlight_classes must map note names to single CSS classes, or be None')
+            self.highlight_notes = highlight_notes
+            self.highlight_classes = None if highlight_classes is None else dict(highlight_classes)
             self.formats = tuple(formats)
             if not self.formats or len(set(self.formats)) != len(self.formats) or any(
                     fmt not in ('svg', 'png') for fmt in self.formats):
@@ -295,10 +315,15 @@ class FretboardExporter(QObject):
         rounded = True if self.circle_triads is True else part.fillet_corners
         notes, sequence = visible_part_content(
             part, self.view.fret_count, include_last_fret=not circle or rounded)
+        visible_positions = set(notes)
+        layers = [replace(layer, notes=tuple(note for note in layer.notes
+                                            if note in visible_positions))
+                  for layer in part.background_layers]
         self.progress.emit(f'{self.names[self.index]}.{self.formats[0]}')
         self.view.display_notes(
-            notes, part.highlight_classes,
+            notes, part.highlight_classes if self.highlight_classes is None else self.highlight_classes,
             use_sharp=self.lesson.use_sharp, play_sequence=sequence,
+            background_layers=layers,
             circle_sequence_elements=circle,
             wrapping_distance=part.wrapping_distance,
             fillet_corners=rounded,
@@ -309,7 +334,8 @@ class FretboardExporter(QObject):
         self._timeout.start(30000)
         # Browser commands execute in order; prepare follows the display update.
         self._javascript("window.renderChordSequence([], ''); window.clearNoteHighlights(); "
-                         'window.fretboardExport.prepare(); true;', lambda _: self._poll())
+                         f'window.fretboardExport.prepare({json.dumps(self.highlight_notes)}); true;',
+                         lambda _: self._poll())
 
     def _poll(self):
         self._javascript('JSON.stringify(window.fretboardExport.result)', self._receive_snapshot)

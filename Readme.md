@@ -1,3 +1,27 @@
+# Loading lessons and tutorials
+
+In `main.py`, choose the startup content with:
+
+```python
+player.load('tutorials', 'Gmaj_E_shape')
+# Or an existing lesson:
+player.load('lessons', 'c_maj_triad')
+```
+
+Directories resolve relative to `Modular`, regardless of the working directory.
+Names may include `.py`. Each directory has its own lesson cache.
+`player.load(directory, name, part_index=1)` starts at the second part.
+It returns the loaded `Lesson`, or `None` if loading fails; the existing
+`player.load_lesson(lesson)` API also remains available.
+
+`tutorials/Gmaj_E_shape.py` shows the full G major E-shape barre chord (355433)
+in all four parts. Part 1 selects G4/B3/e3; part 2 selects D5/G4/B3;
+part 3 selects A5/D5/G4; part 4 selects low E7/A5/D5. Part 4 adds the B note
+at low E fret 7 while keeping the original barre chord visible. The selected
+triad appears dark grey with its root red; the other chord positions stay light
+grey. Play sounds only that part's triad. As with other lessons, Stop clears
+the selection; click the G chord label to highlight it again.
+
 # Exporting fretboards
 
 Run `python Modular/main_export.py` from the repository root (or run
@@ -26,6 +50,22 @@ geometry as the C major lesson. Spacing and corner radius still come from each
 part (defaults: 8px clearance and 24px radius). When preserving a lesson's sharp
 corner style, very sharp corners are clipped to keep the outline compact while
 preserving clearance around the notes.
+To give every exported note its active playback appearance, set these options
+in `main_export.py` (enabled in the G triad recipe):
+
+```python
+highlight_notes=True,
+highlight_classes={'G': 'highlight1'},
+```
+
+Unmapped notes become dark grey. `highlight1` is red, `highlight2` is purple,
+and `highlight3` is blue. For example, use `{'G': 'highlight1', 'B': 'highlight2',
+'D': 'highlight3'}` to color all three chord tones. The mapping replaces each
+part's colors for this export only; `None` keeps the lesson mappings and `{}`
+makes every note use the default grey. Use the lesson's note spelling, such as
+`F#` or `Bb`. Set `highlight_notes=False` for the faded versions of those colors.
+These options apply to both SVG and PNG, including open-string notes.
+
 The reusable `FretboardExporter.export_lesson()` method must be called after
 the view loads and emits `progress(filename)`, `finished(paths)`, and
 `failed(message)` signals. Parts with the same string suffix are rejected to
@@ -63,6 +103,45 @@ selected strings. Its 18px font shrinks when necessary to fit with clearance.
 Opacity ranges from 0 (invisible) to 1 (opaque). Text is converted to vector
 paths before producing both formats, so no website fonts are needed. The
 watermark appears in the saved files, not in the live fretboard window.
+
+### Colored backgrounds and playback notes
+
+Use `BackgroundLayer` to color a set of positions independently of playback:
+
+```python
+from models import BackgroundLayer, Part, SequenceStep
+
+part = Part(
+    name='Scale comparison',
+    background_notes=[('D', 5)],  # Optional default background positions
+    background_layers=[
+        BackgroundLayer(notes=[('G', 4), ('B', 3)], color='#aed6f1'),
+        BackgroundLayer(notes=[('G', 4), ('e', 3)], color='#c39bd3'),
+    ],
+    play_sequence=[
+        SequenceStep(notes=(('E', 7), ('G', 4)), duration_ms=1000),
+    ],
+)
+```
+
+**The first background layer containing a `(string, fret)` position wins.**
+Later layers cannot overwrite its color. In this example, G-string fret 4
+stays blue. Duplicate positions create only one marker. Plain `background_notes`
+provide the default appearance only for positions absent from all colored layers.
+Colors accept `#RGB` or `#RRGGBB`; note text automatically uses black or white.
+Either background list may be empty, including both for playback-only parts.
+
+Background colors apply while notes are inactive. Playback and chord selection
+temporarily use the existing active/highlight colors, then restore the background
+color. Notes absent from every background stay hidden until played or selected
+(including hover previews and the initial chord selection). Rests, stop, and
+playback completion hide them again; pause retains the current step. Open-string
+labels remain visible when their playback-only marker is hidden.
+
+Static exports remain overviews containing every retained sequence note. With
+`highlight_notes=False`, background layer colors are preserved; `True` uses the
+active highlight colors. `highlight_classes` controls legacy/active coloring;
+it does not replace explicit background layer colors.
 
 Tests (from the repository root):
 

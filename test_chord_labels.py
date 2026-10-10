@@ -27,6 +27,9 @@ class FakeView(QObject):
     def isVisible(self):
         return True
 
+    def set_title(self, title):
+        self.title = title
+
     def display_notes(self, *args, **kwargs):
         self.calls.append(('display', kwargs['play_sequence']))
         self.caption = kwargs['chord_label_title']
@@ -64,7 +67,7 @@ class ChordLabelTests(unittest.TestCase):
             scripts = []
             view = SimpleNamespace(page=lambda: SimpleNamespace(runJavaScript=scripts.append))
             FretboardView.display_notes(
-                view, part.notes_to_highlight, play_sequence=part.play_sequence,
+                view, part.background_notes, play_sequence=part.play_sequence,
                 highlight_chord_root=part.highlight_chord_root,
             )
             args = json.loads('[' + scripts[0][len('displayNotes('):-2] + ']')

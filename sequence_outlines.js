@@ -2,6 +2,7 @@
 (() => {
     const SVG_NS = 'http://www.w3.org/2000/svg';
     const STROKE_WIDTH = 2;
+    const STROKE_COLOR = '#448cd4';
     const EPSILON = 1e-7;
     const MITER_LIMIT = 4;
     const add = (a, b, scale = 1) => ({x: a.x + b.x * scale, y: a.y + b.y * scale});
@@ -163,6 +164,7 @@
                 x: bounds.left - origin.left + bounds.width / 2,
                 y: bounds.top - origin.top + bounds.height / 2,
                 radius: Math.max(bounds.width, bounds.height) / 2,
+                hidden: marker.classList.contains('note-hidden'),
             });
         }
         return [...points.values()];
@@ -199,8 +201,10 @@
         outlines.forEach(({points, shape}, index) => {
             if (!shape) return;
             const path = document.createElementNS(SVG_NS, 'path');
+            // Retain geometry/padding for hidden groups to avoid layout jumps.
+            if (points.some(point => point.hidden)) path.style.visibility = 'hidden';
             for (const [key, value] of Object.entries({
-                d: shape.d, fill: 'none', stroke: '#527a8a', 'stroke-width': STROKE_WIDTH,
+                d: shape.d, fill: 'none', stroke: STROKE_COLOR, 'stroke-width': STROKE_WIDTH,
                 'stroke-linejoin': 'round', 'data-sequence-group': index,
                 'data-note-count': points.length, 'data-hull-count': shape.hull.length,
                 'data-fillet-radius': shape.fillet,
@@ -225,6 +229,7 @@
         document.getElementById('sequence-outline-container').replaceChildren();
         scheduleDraw();
     };
+    window.refreshSequenceOutlines = scheduleDraw;
 
     new ResizeObserver(scheduleDraw).observe(document.querySelector('.fretboard-diagram'));
     window.addEventListener('resize', scheduleDraw);

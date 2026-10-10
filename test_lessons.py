@@ -42,7 +42,7 @@ def test_lesson_loading():
     print("\n3. Examining parts...")
     for i, part in enumerate(lesson.parts):
         print(f"\n   Part {i+1}: {part.name}")
-        print(f"      Notes to highlight: {len(part.notes_to_highlight)}")
+        print(f"      Background notes: {len(part.background_notes)}")
         print(f"      Play sequence steps: {part.get_note_count()}")
         print(f"      Duration: {part.get_duration_ms()}ms")
         print(f"      Metadata: {part.metadata}")

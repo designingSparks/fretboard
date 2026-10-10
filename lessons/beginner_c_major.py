@@ -28,7 +28,7 @@ PART1_SEQUENCE = [
 
 part1 = Part(
     name="Position 4 - Ascending",
-    notes_to_highlight=C_MAJOR_POS4_HIGHLIGHT,
+    background_notes=C_MAJOR_POS4_HIGHLIGHT,
     play_sequence=PART1_SEQUENCE,
     highlight_classes={'C': 'highlight1'},
     description='Start with your index finger on the 2nd fret'
@@ -52,7 +52,7 @@ DESCENDING_PLAY = [
 
 part2 = Part(
     name="Position 4 - Descending",
-    notes_to_highlight=C_MAJOR_POS4_HIGHLIGHT,
+    background_notes=C_MAJOR_POS4_HIGHLIGHT,
     play_sequence=DESCENDING_PLAY,
     highlight_classes={'C': 'highlight1'},
     description='Practice going back down the scale'

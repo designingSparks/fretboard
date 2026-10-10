@@ -53,6 +53,7 @@ window.initializeFretboardExport = function(fontFamily) {
                 line('Bottom', r.x, r.y + r.height, r.x + r.width, r.y + r.height);
         });
         const circle = element => {
+            if (getComputedStyle(element).visibility === 'hidden') return;
             const r = bounds(element);
             add('ellipse', {cx: r.x + r.width / 2, cy: r.y + r.height / 2,
                 rx: r.width / 2, ry: r.height / 2, fill: getComputedStyle(element).backgroundColor});
@@ -65,6 +66,7 @@ window.initializeFretboardExport = function(fontFamily) {
             const overlay = document.getElementById(id), r = bounds(overlay);
             const group = add('g', {transform: `translate(${r.x} ${r.y})`});
             [...overlay.children].forEach((child, index) => {
+                if (getComputedStyle(child).visibility === 'hidden') return;
                 const copy = child.cloneNode(true);
                 if (id === 'string-svg-container') {
                     const start = child.getPointAtLength(0);
@@ -81,7 +83,8 @@ window.initializeFretboardExport = function(fontFamily) {
 
         // Measure text separately from its cell (notably the padded fret numbers).
         // Python replaces these temporary text nodes with portable glyph paths.
-        diagram.querySelectorAll('.note, .open-string-note, .string-label, tfoot th').forEach(element => {
+        diagram.querySelectorAll('.note, .open-string-note, .open-string-label, .string-label, tfoot th').forEach(element => {
+            if (element.hidden || getComputedStyle(element).visibility === 'hidden') return;
             if (element.classList.contains('string-label') && element.children.length) return;
             const range = document.createRange();
             range.selectNodeContents(element);
@@ -101,9 +104,15 @@ window.initializeFretboardExport = function(fontFamily) {
     let generation = 0;
     window.fretboardExport = {
         result: null,
-        prepare() {
+        prepare(highlightNotes = false) {
             const current = ++generation;
             this.result = null;
+            document.querySelectorAll('.note, .open-string-note').forEach(note => {
+                // Static overview exports intentionally include every sequence note.
+                window.setNoteVisibility(note, true);
+                note.classList.toggle('inactive', !highlightNotes);
+            });
+            window.refreshSequenceOutlines?.();
             document.fonts.ready.then(() => {
                 if (current !== generation) return;
                 drawStringsAsSVG();

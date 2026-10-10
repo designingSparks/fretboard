@@ -35,10 +35,10 @@ class FretboardPlayer(QWidget):
         self.audio_folder = NOTE_FOLDER
 
         
-        self.notes_to_highlight = C_MAJOR_TRIAD_HIGHLIGHT
+        self.background_notes = C_MAJOR_TRIAD_HIGHLIGHT
         self.play_seq = C_MAJOR_TRIAD_SEQ
 
-        # self.notes_to_highlight = C_MAJOR_POS4_HIGHLIGHT
+        # self.background_notes = C_MAJOR_POS4_HIGHLIGHT
         # self.play_seq = C_MAJOR_POS4_PLAY
 
         self.midi = None #e.g. self.midi = [[64, 60, 55], [67, 64, 60], [72, 67, 64], [76, 72, 67]]
@@ -111,10 +111,10 @@ class FretboardPlayer(QWidget):
 
         
         # Create a list of tuples to be send to fretboard.js        
-        notes_to_highlight = []
+        active_notes = []
         for item in self.play_seq[self.play_index]:
-            notes_to_highlight.append(item)
-        self.highlight_notes(notes_to_highlight)
+            active_notes.append(item)
+        self.highlight_notes(active_notes)
 
         # --- Play Sound and Schedule Next Note ---
         duration_ms = self.note_duration[self.play_index]
@@ -201,10 +201,10 @@ class FretboardPlayer(QWidget):
         # Convert the list of tuples into a list of dictionaries for easier JSON conversion.
         # Using camelCase for keys is a common convention when passing data to JavaScript.
         # scale_data = [
-        #     {'stringName': s, 'fret': f} for s, f in self.notes_to_highlight
+        #     {'stringName': s, 'fret': f} for s, f in self.background_notes
         # ]
         scale_data = []
-        for s, f in self.notes_to_highlight:
+        for s, f in self.background_notes:
             string_num = STRING_ID.index(s)
             note_name = FRETBOARD_NOTES[string_num][f]
             # Use .get() to safely get the highlight class.

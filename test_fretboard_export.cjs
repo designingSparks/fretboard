@@ -24,7 +24,12 @@ function fixture() {
             this.children = [];
             this.style = style;
             this.rect = {left: 100, top: 50, width: 30, height: 30, ...rect};
-            this.classList = {contains: name => classes.includes(name)};
+            const classNames = new Set(classes);
+            this.classList = {
+                add: name => classNames.add(name), remove: name => classNames.delete(name),
+                contains: name => classNames.has(name),
+                toggle: (name, enabled) => enabled ? classNames.add(name) : classNames.delete(name),
+            };
             this.textContent = '';
         }
         setAttribute(name, value) { this.attrs[name] = String(value); }
@@ -48,9 +53,11 @@ function fixture() {
     const note = new Element('div', {left: 170, top: 70},
         {...baseStyle, backgroundColor: 'rgb(254, 193, 187)'});
     note.textContent = 'G';
+    note.activeStyle = {...note.style, backgroundColor: 'rgb(231, 76, 60)', color: 'rgb(255, 255, 255)'};
     const open = new Element('div', {left: 105, top: 100},
         {...baseStyle, backgroundColor: 'rgb(188, 188, 188)'});
     open.textContent = 'B';
+    open.activeStyle = {...open.style, backgroundColor: 'rgb(68, 68, 68)', color: 'rgb(255, 255, 255)'};
     const openCell = new Element('td', {}, baseStyle, ['string-label']);
     openCell.appendChild(open);
     openCell.textContent = 'B';
@@ -89,7 +96,7 @@ function fixture() {
     diagram.querySelectorAll = selector => ({
         'td.fret': [cell], '.fret-marker-dot': [dot],
         '.note, .open-string-note': [note, open],
-        '.note, .open-string-note, .string-label, tfoot th': [note, open, openCell, label, footer],
+        '.note, .open-string-note, .open-string-label, .string-label, tfoot th': [note, open, openCell, label, footer],
     })[selector];
     let fontReady;
     const fonts = new Promise(resolve => { fontReady = resolve; });
@@ -98,8 +105,12 @@ function fixture() {
         children: node.children.map(serializable)});
     const context = {
         GUITAR_TUNING: ['e', 'B', 'G', 'D', 'A', 'E'].map(name => ({name})),
-        window: {},
+        window: {setNoteVisibility: (note, visible) => {
+            note.classList.toggle('note-hidden', !visible);
+            if (note.openStringLabel) note.openStringLabel.hidden = visible;
+        }},
         document: {
+            querySelectorAll: selector => diagram.querySelectorAll(selector),
             querySelector: selector => ({'.fretboard-header': header,
                 '.fretboard-container': container, '.fretboard-diagram': diagram})[selector],
             getElementById: id => id === 'string-svg-container' ? strings : outlines,
@@ -108,14 +119,18 @@ function fixture() {
                 getBoundingClientRect() { return this.element.getBoundingClientRect(); }}),
             fonts: {ready: fonts},
         },
-        getComputedStyle: element => element.style,
+        getComputedStyle: element => ({
+            ...(element.activeStyle && !element.classList.contains('inactive')
+                ? element.activeStyle : element.style),
+            ...(element.classList.contains('note-hidden') ? {visibility: 'hidden'} : {}),
+        }),
         drawStringsAsSVG: () => {},
         requestAnimationFrame: callback => frames.push(callback),
         XMLSerializer: class {serializeToString(node) { return JSON.stringify(serializable(node)); }},
     };
     vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'fretboard_export.js'), 'utf8'), context);
     context.window.initializeFretboardExport('Arial');
-    return {api: context.window.fretboardExport, header, container, diagram, strings, note, frames,
+    return {api: context.window.fretboardExport, header, container, diagram, strings, note, open, outlines, frames,
         fontReady, frame: () => frames.splice(0).forEach(callback => callback())};
 }
 
@@ -147,6 +162,48 @@ test('complete vector scene includes open strings, labels, outlines and finite s
     assert.deepEqual(texts.map(node => node.text), ['G', 'B', 'e', '24']);
     assert.equal(texts[0].attrs.x, '85'); // Relative to diagram, not the viewport.
     assert.equal(texts.at(-1).attrs.y, '227.5'); // Uses actual text bounds.
+});
+
+test('active export includes open notes, preserves custom colors and can return to faded colors', async () => {
+    const f = fixture();
+    // A custom highlight class can supply purple instead of the default grey.
+    f.open.activeStyle.backgroundColor = 'rgb(142, 68, 173)';
+    f.fontReady();
+    for (const active of [true, false]) {
+        f.api.prepare(active);
+        await Promise.resolve();
+        for (let i = 0; i < 4; i++) f.frame();
+        const svg = JSON.parse(f.api.result.svg);
+        const notes = svg.children.filter(node => node.tag === 'ellipse').slice(1);
+        assert.deepEqual(notes.map(node => node.attrs.fill), active
+            ? ['rgb(231, 76, 60)', 'rgb(142, 68, 173)']
+            : ['rgb(254, 193, 187)', 'rgb(188, 188, 188)']);
+        const labels = svg.children.filter(node => node.tag === 'text').slice(0, 2);
+        assert.ok(labels.every(node => node.attrs.fill === (active ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)')));
+    }
+});
+
+test('overview reveals playback notes; snapshots omit hidden markers and outlines', async () => {
+    const f = fixture();
+    f.note.classList.add('note-hidden');
+    f.open.classList.add('note-hidden');
+    f.open.openStringLabel = {hidden: false};
+    f.note.style.backgroundColor = 'rgb(18, 52, 86)';
+    f.api.prepare(false);
+    assert.equal(f.note.classList.contains('note-hidden'), false);
+    assert.equal(f.open.openStringLabel.hidden, true);
+    // A marker hidden after preparation must not leak into the SVG snapshot.
+    f.open.classList.add('note-hidden');
+    f.outlines.children[0].style.visibility = 'hidden';
+    f.fontReady();
+    await Promise.resolve();
+    for (let i = 0; i < 4; i++) f.frame();
+    const svg = JSON.parse(f.api.result.svg);
+    assert.equal(svg.children.filter(node => node.tag === 'ellipse').length, 2);
+    assert.equal(svg.children.filter(node => node.tag === 'ellipse')[1].attrs.fill, 'rgb(18, 52, 86)');
+    assert.equal(svg.children.filter(node => node.tag === 'g')[1].children.length, 0);
+    assert.deepEqual(svg.children.filter(node => node.tag === 'text').map(node => node.text),
+        ['G', 'e', '24']);
 });
 
 test('waits for fonts and stable geometry after asynchronous reflow', async () => {

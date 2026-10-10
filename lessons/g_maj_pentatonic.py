@@ -30,7 +30,7 @@ G_MAJ_PENT_POS5 = generate_pattern('Gmaj', 5)
 # ============================================================================
 part1 = Part(
     name="Position 1 (E Shape)",
-    notes_to_highlight=G_MAJ_PENT_POS1,
+    background_notes=G_MAJ_PENT_POS1,
     play_sequence=create_play_sequence(G_MAJ_PENT_POS1, duration=TON),
     highlight_classes={'G': 'highlight1'},
     description='Start with the E shape pattern around fret 3. Root note: Low E string fret 3'
@@ -41,7 +41,7 @@ part1 = Part(
 # ============================================================================
 part2 = Part(
     name="Position 2 (D Shape)",
-    notes_to_highlight=G_MAJ_PENT_POS2,
+    background_notes=G_MAJ_PENT_POS2,
     play_sequence=create_play_sequence(G_MAJ_PENT_POS2, duration=TON),
     highlight_classes={'G': 'highlight1'},
     description='D shape pattern around fret 5. Root note: D string fret 5'
@@ -52,7 +52,7 @@ part2 = Part(
 # ============================================================================
 part3 = Part(
     name="Position 3 (C Shape)",
-    notes_to_highlight=G_MAJ_PENT_POS3,
+    background_notes=G_MAJ_PENT_POS3,
     play_sequence=create_play_sequence(G_MAJ_PENT_POS3, duration=TON),
     highlight_classes={'G': 'highlight1'},
     description='C shape pattern around fret 7. Root note: A string fret 7'
@@ -63,7 +63,7 @@ part3 = Part(
 # ============================================================================
 part4 = Part(
     name="Position 4 (A Shape)",
-    notes_to_highlight=G_MAJ_PENT_POS4,
+    background_notes=G_MAJ_PENT_POS4,
     play_sequence=create_play_sequence(G_MAJ_PENT_POS4, duration=TON),
     highlight_classes={'G': 'highlight1'},
     description='A shape pattern around fret 10. Root note: A string fret 10'
@@ -75,7 +75,7 @@ part4 = Part(
 
 part5 = Part(
     name="Position 5 (G Shape)",
-    notes_to_highlight=G_MAJ_PENT_POS5,
+    background_notes=G_MAJ_PENT_POS5,
     play_sequence=create_play_sequence(G_MAJ_PENT_POS5, duration=TON),
     highlight_classes={'G': 'highlight1'},
     description='G shape pattern around fret 12. Root notes: A string fret 10, Low E string fret 10'

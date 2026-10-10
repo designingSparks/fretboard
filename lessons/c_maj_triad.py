@@ -22,7 +22,7 @@ PART1_SEQUENCE = [
 ]  
 part1 = Part(
     name="Strings G, B, e",
-    notes_to_highlight=PART1_NOTES,
+    background_notes=PART1_NOTES,
     play_sequence=PART1_SEQUENCE,
     circle_sequence_elements=True,
     wrapping_distance=8,
@@ -45,7 +45,7 @@ PART2_SEQUENCE = [
 ]  
 part2 = Part(
     name="Strings D, G, B",
-    notes_to_highlight=PART2_NOTES,
+    background_notes=PART2_NOTES,
     play_sequence=PART2_SEQUENCE,
     circle_sequence_elements=True,
     wrapping_distance=8,
@@ -71,7 +71,7 @@ PART3_SEQUENCE = [
 ]
 part3 = Part(
     name="Strings A, D, G",
-    notes_to_highlight=PART3_NOTES,
+    background_notes=PART3_NOTES,
     play_sequence=PART3_SEQUENCE,
     circle_sequence_elements=True,
     wrapping_distance=8,
@@ -97,7 +97,7 @@ PART4_SEQUENCE = [
 ]
 part4 = Part(
     name="Strings E, A, D",
-    notes_to_highlight=PART4_NOTES,
+    background_notes=PART4_NOTES,
     play_sequence=PART4_SEQUENCE,
     circle_sequence_elements=True,
     wrapping_distance=8,

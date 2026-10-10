@@ -10,6 +10,7 @@ from PySide6.QtCore import QUrl, QUrlQuery, Signal, Slot
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from constants import FRETBOARD_NOTES_SHARP, FRETBOARD_NOTES_FLAT, STRING_ID
 from models.sequence_step import parse_sequence_row
+from models.background_layer import resolve_background_notes
 
 
 class FretboardView(QWebEngineView):
@@ -46,15 +47,18 @@ class FretboardView(QWebEngineView):
         print("Fretboard view loaded successfully")
         self.view_loaded.emit()
 
-    def display_notes(self, notes_to_highlight, highlight_classes=None, use_sharp=True,
+    def display_notes(self, background_notes, highlight_classes=None, use_sharp=True,
                       play_sequence=None, circle_sequence_elements=False,
                       wrapping_distance=8.0, fillet_corners=False, fillet_radius=24.0,
-                      chord_label_title="Triad playing", highlight_chord_root=False):
+                      chord_label_title="Triad playing", highlight_chord_root=False,
+                      background_layers=()):
         """
         Display notes on the fretboard in an inactive state.
 
         Args:
-            notes_to_highlight: List of (string_name, fret) tuples
+            background_notes: List of (string_name, fret) tuples
+            background_layers: Colored layers; the first layer at a position wins.
+                               Playback-only markers start hidden until selected.
             highlight_classes: Dict mapping note names to CSS highlight classes
                              e.g., {'C': 'highlight1', 'E': 'highlight2'}
             use_sharp: If True, use sharp notation (C#, D#). If False, use flat notation (Db, Eb)
@@ -71,7 +75,8 @@ class FretboardView(QWebEngineView):
 
         groups = []
         sequence_steps = []
-        display_positions = list(dict.fromkeys(notes_to_highlight))
+        backgrounds = resolve_background_notes(background_notes, background_layers)
+        display_positions = dict.fromkeys(backgrounds)
         for row in play_sequence or []:
             step = parse_sequence_row(row)
             positions = list(dict.fromkeys(step.notes))
@@ -89,8 +94,7 @@ class FretboardView(QWebEngineView):
             if circle_sequence_elements and positions:
                 groups.append(notes)
             for position in positions:
-                if position not in display_positions:
-                    display_positions.append(position)
+                display_positions.setdefault(position, None)
 
         # Select the appropriate note mapping based on sharp/flat preference
         fretboard_notes = FRETBOARD_NOTES_SHARP if use_sharp else FRETBOARD_NOTES_FLAT
@@ -113,7 +117,9 @@ class FretboardView(QWebEngineView):
                 'fret': f,
                 'highlight': highlight_class,
                 'noteName': note_name,
-                'hasFlat': has_flat
+                'hasFlat': has_flat,
+                'isBackground': (s, f) in backgrounds,
+                **backgrounds.get((s, f), {'backgroundColor': None, 'backgroundLayers': []}),
             })
 
         # Send notes and groups together so a redraw never retains an old part's outlines.

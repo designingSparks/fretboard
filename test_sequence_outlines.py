@@ -59,7 +59,8 @@ class SequenceOutlineBrowserTests(unittest.TestCase):
 
     def display(self, part):
         self.view.display_notes(
-            part.notes_to_highlight, part.highlight_classes,
+            part.background_notes, part.highlight_classes,
+            background_layers=part.background_layers,
             play_sequence=part.play_sequence,
             circle_sequence_elements=part.circle_sequence_elements,
             wrapping_distance=part.wrapping_distance,
@@ -102,6 +103,69 @@ class SequenceOutlineBrowserTests(unittest.TestCase):
                     self.assertLessEqual(group['hull'], group['notes'])
                     self.assertGreaterEqual(group['x'], 0)
                     self.assertGreaterEqual(group['y'], 0)
+
+    def test_background_colors_and_playback_only_visibility(self):
+        from models.background_layer import BackgroundLayer
+        from models.sequence_step import SequenceStep
+
+        part = Part('Colored', [('G', 4)], [
+            SequenceStep(notes=(('e', 3), ('E', 7)), duration_ms=1000, chord_name='G'),
+            SequenceStep(notes=(('G', 0),), duration_ms=1000, chord_name='G'),
+            SequenceStep(notes=(), duration_ms=1000),
+        ], background_layers=[
+            BackgroundLayer(notes=[('e', 3)], color='#123456'),
+            BackgroundLayer(notes=[('e', 3), ('B', 3)], color='#abcdef'),
+        ], highlight_chord_root=True, circle_sequence_elements=True)
+        self.display(part)
+
+        def marker(string, fret):
+            return json.loads(self.javascript(f'''JSON.stringify((() => {{
+                const note = document.querySelector('[data-string="{string}"] '
+                    + '.{"open-string-note" if fret == 0 else "note"}[data-fret="{fret}"]');
+                const style = getComputedStyle(note);
+                return {{visible: style.visibility !== 'hidden', color: style.backgroundColor,
+                    labelVisible: note.openStringLabel ? !note.openStringLabel.hidden : null}};
+            }})())'''))
+
+        # The first labelled step is selected on load, including the extra low B.
+        self.assertTrue(marker(5, 7)['visible'])
+        self.assertEqual(marker(0, 3)['color'], 'rgb(231, 76, 60)')
+        self.javascript('clearNoteHighlights()')
+        self.assertEqual(marker(0, 3)['color'], 'rgb(18, 52, 86)')
+        self.assertEqual(marker(1, 3)['color'], 'rgb(171, 205, 239)')
+        self.assertTrue(marker(2, 4)['visible'])
+        self.assertFalse(marker(5, 7)['visible'])
+        self.assertFalse(marker(2, 0)['visible'])
+        self.assertTrue(marker(2, 0)['labelVisible'])
+        self.javascript('setChordPlaybackState("playing"); highlightSequenceStep(1)')
+        self.assertTrue(marker(2, 0)['visible'])
+        self.assertFalse(marker(2, 0)['labelVisible'])
+        self.javascript('setChordPlaybackState("paused")')
+        self.assertTrue(marker(2, 0)['visible'])
+        self.javascript('setChordPlaybackState("playing"); highlightSequenceStep(2)')
+        self.assertFalse(marker(2, 0)['visible'])  # Rest restores the background.
+        self.assertEqual(marker(0, 3)['color'], 'rgb(18, 52, 86)')
+        self.javascript('setChordPlaybackState("stopped"); '
+                        'document.querySelectorAll(".chord-label")[1].click()')
+        self.assertTrue(marker(2, 0)['visible'])
+        self.javascript('highlightNote("E", 7)')
+        self.assertFalse(marker(2, 0)['visible'])
+        self.assertTrue(marker(5, 7)['visible'])
+        self.javascript('clearNoteHighlights()')
+        self.assertFalse(marker(5, 7)['visible'])
+
+    def test_tutorial_extra_low_e_is_visible_only_when_selected(self):
+        for name, fret in [('Gmaj_E_shape', 7), ('GMaj_A_shape', 15), ('Gmaj_C_shape', 10)]:
+            with self.subTest(tutorial=name):
+                part = LessonLoader('tutorials').load_lesson(name).parts[0]
+                self.display(part)
+                selector = f'td[data-string="5"][data-fret="{fret}"] .note'
+                visible = f'getComputedStyle(document.querySelector({json.dumps(selector)})).visibility'
+                self.assertEqual(self.javascript(visible), 'hidden')
+                self.javascript('document.querySelectorAll(".chord-label")[3].click()')
+                self.assertEqual(self.javascript(visible), 'visible')
+                self.javascript('clearNoteHighlights()')
+                self.assertEqual(self.javascript(visible), 'hidden')
 
     def test_g_c_d_root_follows_each_triad_and_clears_on_stop(self):
         from constants import FRETBOARD_NOTES_SHARP, STRING_ID

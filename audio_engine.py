@@ -94,7 +94,7 @@ class AudioEngine(QObject):
 
         Example:
             >>> from models.lesson_model import Part
-            >>> part = Part(name="Scale", notes_to_highlight=[...], play_sequence=[...])
+            >>> part = Part(name="Scale", background_notes=[...], play_sequence=[...])
             >>> audio_engine.load_part(part)
         """
         self.load_sequence(part.play_sequence)

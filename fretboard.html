@@ -168,6 +168,7 @@
              background-color: #fff;
         }
         .string-label {
+            position: relative;
             background-color: #fff;
             color: #000;
             font-weight: bold;
@@ -253,6 +254,22 @@
         .open-string-note.highlight3.inactive {
             background-color: #aed6f1; /* Inactive (Faded Blue) */
             color: #fff;
+        }
+
+        /* Explicit background colors apply only while inactive. Active chord/root
+           styles above take over temporarily without losing the layer color. */
+        .note.background-colored.inactive, .open-string-note.background-colored.inactive {
+            background-color: var(--background-note-color);
+            color: var(--background-note-text);
+        }
+        .note.note-hidden, .open-string-note.note-hidden {
+            visibility: hidden; /* Preserve marker geometry for sequence outlines. */
+        }
+        .open-string-label {
+            position: absolute;
+            inset: 0;
+            align-content: center;
+            text-align: center;
         }
 
         /* New class for the fret highlight */

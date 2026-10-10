@@ -17,6 +17,10 @@ def export_G_triads(exporter):
         formats=('svg', 'png'),
         png_scale=2,
         circle_triads=True,
+        highlight_notes=True,  # Active playback colors for every displayed note.
+        # Replaces lesson colors; None keeps them, {} makes all notes dark grey.
+        # highlight1 = red, highlight2 = purple, highlight3 = blue.
+        highlight_classes={'G': 'highlight1'},
         watermark_text='   learnleadfast.com',
         # Filename suffix -> gap between two adjacent strings (E = low, e = high).
         watermark_between={

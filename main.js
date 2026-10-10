@@ -41,13 +41,21 @@ const GUITAR_TUNING = [
 // ];
 
 // Configuration for SVG strings, previously handled in CSS
+// const STRING_CONFIG = [
+//     { width: 2.1, color: '#a9a9a9' }, // High e
+//     { width: 2.4, color: '#a9a9a9' }, // B
+//     { width: 2.7, color: '#a9a9a9' }, // G
+//     { width: 3.0, color: '#a9a9a9' }, // D
+//     { width: 3.3, color: '#a9a9a9' }, // A
+//     { width: 3.6, color: '#a9a9a9' }  // Low E
+// ];
 const STRING_CONFIG = [
-    { width: 2.1, color: '#a9a9a9' }, // High e
-    { width: 2.4, color: '#a9a9a9' }, // B
-    { width: 2.7, color: '#a9a9a9' }, // G
-    { width: 3.0, color: '#a9a9a9' }, // D
-    { width: 3.3, color: '#a9a9a9' }, // A
-    { width: 3.6, color: '#a9a9a9' }  // Low E
+    { width: 1.0, color: '#777777' }, // High e
+    { width: 1.4, color: '#777777' }, // B
+    { width: 1.8, color: '#777777' }, // G
+    { width: 2.2, color: '#777777' }, // D
+    { width: 2.6, color: '#777777' }, // A
+    { width: 3.0, color: '#777777' }  // Low E
 ];
 
 // A virtual distance in pixels from the nut to the saddle.
@@ -294,7 +302,15 @@ function drawScalePattern(pattern) {
                 noteDiv.textContent = stringName;
                 noteDiv.dataset.fret = 0;
                 noteDiv.dataset.duration = noteInfo.duration;
+                initializeNoteAppearance(noteDiv, noteInfo);
                 labelCell.appendChild(noteDiv);
+                if (noteInfo.isBackground === false) {
+                    const label = document.createElement('span');
+                    label.className = 'open-string-label';
+                    label.textContent = stringName;
+                    labelCell.appendChild(label);
+                    noteDiv.openStringLabel = label;
+                }
             }
         } else {
             // Handle fretted notes (fret > 0)
@@ -312,6 +328,7 @@ function drawScalePattern(pattern) {
                 noteDiv.textContent = noteInfo.noteName; // Use the name from Python
                 noteDiv.dataset.fret = fret;
                 noteDiv.dataset.duration = noteInfo.duration; // Store duration for future use
+                initializeNoteAppearance(noteDiv, noteInfo);
                 cell.appendChild(noteDiv);
             }
         }
@@ -724,101 +741,80 @@ function clearChordRootHighlights() {
     });
 }
 
-/* Similar to highlightNote() but can highlight multiple notes
-*/
-window.highlightNotes = function(jsonData) {
-    console.log("Received highlight request from Python.");
+// Background membership and active styling are independent. Legacy marker data
+// without isBackground remains visible; only explicitly playback-only notes hide.
+function initializeNoteAppearance(note, info) {
+    note.dataset.backgroundLayers = JSON.stringify(info.backgroundLayers || []);
+    if (info.isBackground === false) {
+        note.classList.add('playback-only');
+        setNoteVisibility(note, false);
+    }
+    if (info.backgroundColor) {
+        note.classList.add('background-colored');
+        note.style.setProperty('--background-note-color', info.backgroundColor);
+        const hex = info.backgroundColor.slice(1);
+        const full = hex.length === 3 ? [...hex].map(c => c + c).join('') : hex;
+        const rgb = [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16) / 255)
+            .map(c => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+        const luminance = rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+        note.style.setProperty('--background-note-text', luminance > 0.179 ? '#000' : '#fff');
+    }
+}
+
+function setNoteVisibility(note, visible) {
+    if (visible) note.classList.remove('note-hidden');
+    else note.classList.add('note-hidden');
+    if (note.openStringLabel) note.openStringLabel.hidden = visible;
+}
+window.setNoteVisibility = setNoteVisibility;
+
+function resetNoteAppearance() {
     clearChordRootHighlights();
-    
-    // First, reset all notes on the fretboard to their inactive (faded) state.
     document.querySelectorAll('.note, .open-string-note').forEach(note => {
         note.classList.add('inactive');
+        setNoteVisibility(note, !note.classList.contains('playback-only'));
     });
-    
-    //Cycle through jsonData and call highlight note
+}
+
+window.highlightNotes = function(jsonData) {
     try {
-        const notesToHighlight = JSON.parse(jsonData);
+        const notes = JSON.parse(jsonData);
+        resetNoteAppearance();
         const stringNameToIndex = GUITAR_TUNING.reduce((acc, stringInfo, index) => {
             acc[stringInfo.name] = index;
             return acc;
         }, {});
-
-        notesToHighlight.forEach(noteInfo => {
+        notes.forEach(noteInfo => {
             const stringIndex = stringNameToIndex[noteInfo.stringName];
-            const fret = noteInfo.fret;
-
-            if (stringIndex !== undefined) {
-                let noteSelector;
-                if (fret === 0) {
-                    // Selector for an open string note
-                    noteSelector = `td.string-label[data-string="${stringIndex}"] .open-string-note`;
-                } else {
-                    // Selector for a fretted note
-                    noteSelector = `td.fret[data-string="${stringIndex}"][data-fret="${fret}"] .note`;
-                }
-                const noteElement = document.querySelector(noteSelector);
-                if (noteElement) {
-                    if (noteInfo.isRoot && !noteElement.classList.contains('highlight1')) {
-                        noteElement.classList.add('highlight1');
-                        noteElement.dataset.chordRoot = 'true';
-                    }
-                    noteElement.classList.remove('inactive');
-                }
+            if (stringIndex === undefined) return;
+            const selector = noteInfo.fret === 0
+                ? `td.string-label[data-string="${stringIndex}"] .open-string-note`
+                : `td.fret[data-string="${stringIndex}"][data-fret="${noteInfo.fret}"] .note`;
+            const note = document.querySelector(selector);
+            if (!note) return;
+            setNoteVisibility(note, true);
+            if (noteInfo.isRoot && !note.classList.contains('highlight1')) {
+                note.classList.add('highlight1');
+                note.dataset.chordRoot = 'true';
             }
+            note.classList.remove('inactive');
         });
+        window.refreshSequenceOutlines?.();
     } catch (e) {
-        console.error("Failed to parse notes to highlight from Python:", e);
+        console.error("Failed to highlight notes from Python:", e);
     }
 };
 
-/**
- * Called from python when a new note is being played.
- * Highlights a single note on the fretboard when called from Python during playback
- * @param {string} stringName - The name of the string (e.g., 'E', 'A', 'e').
- * @param {number} fret - The fret number of the note to highlight.
- */
+// Single notes, chords, rests and previews share the same visibility lifecycle.
 window.highlightNote = function(stringName, fret) {
-    // First, reset all notes on the fretboard to their inactive (faded) state.
-    document.querySelectorAll('.note, .open-string-note').forEach(note => {
-        note.classList.add('inactive');
-    });
-
-    // Create a mapping from string name to its index for quick lookups.
-    // This could be a global constant if used frequently.
-    const stringNameToIndex = GUITAR_TUNING.reduce((acc, stringInfo, index) => {
-        acc[stringInfo.name] = index;
-        return acc;
-    }, {});
-
-    const stringIndex = stringNameToIndex[stringName];
-
-    if (stringIndex === undefined) {
-        console.warn(`highlightNote: Unknown string name '${stringName}'`);
-        return;
-    }
-
-    // Construct a selector to find the note div within the correct table cell
-    const noteSelector = `td.fret[data-string="${stringIndex}"][data-fret="${fret}"] .note`;
-    const noteElement = document.querySelector(noteSelector);
-
-    if (noteElement) {
-        // Now, remove the inactive class from only the current note to highlight it.
-        noteElement.classList.remove('inactive');
-    }
+    window.highlightNotes(JSON.stringify([{stringName, fret}]));
 };
 
-/**
- * Called from Python when playback is stopped. 
- */
 window.clearNoteHighlights = function() {
     clearChordSelection();
-    clearChordRootHighlights();
-    document.querySelectorAll('.note, .open-string-note').forEach(note => {
-        note.classList.add('inactive');
-    });
-}
-
-
+    resetNoteAppearance();
+    window.refreshSequenceOutlines?.();
+};
 
 // --- Animation Trigger ---
 const bendButton = document.getElementById('bend-note-button');

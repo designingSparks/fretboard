@@ -29,7 +29,7 @@ PART1_SEQUENCE = [
 
 part1 = Part(
     name="Intro Riff - Bars 1-2",
-    notes_to_highlight=PART1_NOTES,
+    background_notes=PART1_NOTES,
     play_sequence=PART1_SEQUENCE,
     description="First half of the iconic intro riff"
 )
@@ -56,7 +56,7 @@ PART2_SEQUENCE = [
 
 part2 = Part(
     name="Intro Riff - Bars 3-4",
-    notes_to_highlight=PART2_NOTES,
+    background_notes=PART2_NOTES,
     play_sequence=PART2_SEQUENCE,
     description="Second half with the descending line"
 )

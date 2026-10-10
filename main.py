@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication
 from ui.main_window import MainWindow
 from ui.fretboard_view import FretboardView
 from audio_engine import AudioEngine
+from models.lesson_loader import LessonLoader
 
 # Configuration
 NOTE_FOLDER = 'clean'
@@ -40,12 +41,28 @@ class FretboardPlayer(QObject):
         self.current_lesson = None
         self.current_part_index = 0
         self._current_part = None
+        self._lesson_loaders = {}
 
         # Connect signals
         self.fretboard_view.view_loaded.connect(self.on_fretboard_loaded)
         self.audio_engine.highlight_note_index.connect(self.on_highlight_note_index)
         self.audio_engine.playback_started.connect(self.on_playback_started)
         self.audio_engine.playback_stopped.connect(self.on_playback_stopped)
+
+    def load(self, directory, name, part_index=0):
+        """Load a named lesson/tutorial from a directory relative to Modular.
+
+        For example: load('tutorials', 'Gmaj_E_shape') or
+        load('lessons', 'c_maj_triad'). Absolute directories are also accepted.
+        Returns the loaded Lesson, or None on failure.
+        """
+        loader = LessonLoader(directory)
+        directory_key = loader.lessons_dir.resolve()
+        loader = self._lesson_loaders.setdefault(directory_key, loader)
+        lesson = loader.load_lesson(name)
+        if lesson is None:
+            return None
+        return self.load_lesson(lesson, part_index)
 
     def load_lesson(self, lesson, part_index=0):
         """
@@ -72,9 +89,12 @@ class FretboardPlayer(QObject):
 
         # Load the specified part
         self.load_part(lesson.parts[part_index])
+        if self.fretboard_view.isVisible():
+            self.fretboard_view.set_title(lesson.name)
 
         # Emit signal for initial part load
         self.part_changed.emit(self.current_part_index, len(self.current_lesson.parts))
+        return lesson
 
 
     def load_part(self, part):
@@ -101,8 +121,9 @@ class FretboardPlayer(QObject):
             # Get use_sharp setting from current lesson, default to True
             use_sharp = self.current_lesson.use_sharp if self.current_lesson else True
             self.fretboard_view.display_notes(
-                part.notes_to_highlight,
+                part.background_notes,
                 part.highlight_classes,
+                background_layers=part.background_layers,
                 use_sharp=use_sharp,
                 play_sequence=part.play_sequence,
                 circle_sequence_elements=part.circle_sequence_elements,
@@ -115,7 +136,7 @@ class FretboardPlayer(QObject):
             )
 
         print(f"Loaded part: {part.name}")
-        print(f"  Notes to highlight: {len(part.notes_to_highlight)}")
+        print(f"  Background notes: {len(part.background_notes)}")
         print(f"  Play sequence steps: {part.get_note_count()}")
         print(f"  Duration: {part.get_duration_ms()}ms")
 
@@ -231,12 +252,15 @@ class FretboardPlayer(QObject):
         """
         print("Fretboard loaded.")
         if self._current_part:
+            if self.current_lesson:
+                self.fretboard_view.set_title(self.current_lesson.name)
             print(f"Displaying part: {self._current_part.name}")
             # Get use_sharp setting from current lesson, default to True
             use_sharp = self.current_lesson.use_sharp if self.current_lesson else True
             self.fretboard_view.display_notes(
-                self._current_part.notes_to_highlight,
+                self._current_part.background_notes,
                 self._current_part.highlight_classes,
+                background_layers=self._current_part.background_layers,
                 use_sharp=use_sharp,
                 play_sequence=self._current_part.play_sequence,
                 circle_sequence_elements=self._current_part.circle_sequence_elements,
@@ -256,7 +280,6 @@ class FretboardPlayer(QObject):
 # --- Application entry point ---
 if __name__ == "__main__":
     import sys
-    from models.lesson_loader import LessonLoader
     from models.lesson_scanner import scan_lessons
     from settings import ConfigManager
     from ui.lesson_browser import LessonBrowser
@@ -300,7 +323,6 @@ if __name__ == "__main__":
 
     # Create coordinator that connects audio and visuals
     player = FretboardPlayer(fretboard_view, audio_engine)
-    player
 
     # Set fretboard view as central widget
     main_window.set_central_content(fretboard_view)
@@ -331,18 +353,8 @@ if __name__ == "__main__":
     # Helper function to load a lesson by filename
     def load_lesson_by_filename(filename):
         """Load a lesson by filename and update recent lessons."""
-        lesson = loader.load_lesson(filename)
+        lesson = player.load('lessons', filename)
         if lesson:
-            # Stop playback if playing
-            if audio_engine.is_playing:
-                audio_engine.stop_playback()
-
-            # Load the lesson
-            player.load_lesson(lesson)
-
-            # Update title
-            fretboard_view.set_title(lesson.name)
-
             # Add to recent lessons
             main_window.add_recent_lesson(filename, lesson.name)
 
@@ -377,23 +389,14 @@ if __name__ == "__main__":
     main_window.recent_lesson_clicked.connect(load_lesson_by_filename)
 
     # Load default lesson (after all signal connections are set up)
-    loader = LessonLoader()
     print("\n" + "="*70)
     print("LOADING DEFAULT LESSON")
     print("="*70)
 
-    # default_lesson = loader.load_lesson("beginner_c_major")
-    # default_lesson = loader.load_lesson("g_maj_pentatonic")
-    # default_lesson = loader.load_lesson("bflat_maj_triad")
-    default_lesson = loader.load_lesson("c_maj_triad")
-    # default_lesson = loader.load_lesson("g_c_d_major_triads")
-    # default_lesson = loader.load_lesson("c_f_g_major_triads")
+    # For an existing lesson: player.load('lessons', 'c_maj_triad')
+    default_lesson = player.load('tutorials', 'Gmaj_C_shape')
     if default_lesson:
-        player.load_lesson(default_lesson)
         print(f"✓ Successfully loaded: {default_lesson.name}")
-        fretboard_view.view_loaded.connect(
-            lambda: fretboard_view.set_title(default_lesson.name)
-        )
     else:
         print("⚠️  Warning: Could not load default lesson")
         print("   The application will start but no lesson will be loaded.")

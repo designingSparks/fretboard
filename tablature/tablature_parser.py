@@ -260,8 +260,8 @@ def parse_tablature(tab_text: str, config: Dict[str, Any]) -> List[Part]:
     duration_index = 0  # Track position in duration list
 
     for i, bar_indices in enumerate(parts_list):
-        # Extract notes for highlighting
-        highlight_notes = extract_notes_from_bars(bars, bar_indices)
+        # Extract background notes for display
+        background_notes = extract_notes_from_bars(bars, bar_indices)
 
         # Calculate how many note events are in these bars
         total_events = 0
@@ -285,7 +285,7 @@ def parse_tablature(tab_text: str, config: Dict[str, Any]) -> List[Part]:
         # Create Part object
         part = Part(
             name=part_names[i] if i < len(part_names) else f"Part {i+1}",
-            notes_to_highlight=highlight_notes,
+            background_notes=background_notes,
             play_sequence=play_sequence,
             description=part_descriptions[i] if i < len(part_descriptions) else ''
         )
@@ -332,17 +332,17 @@ def print_part_code(part: Part, part_name_variable: str = 'part1',
     Args:
         part: The Part object to print
         part_name_variable: Variable name for the part (e.g., 'part1', 'part2')
-        notes_constant: Constant name for notes_to_highlight array
+        notes_constant: Constant name for background_notes array
         sequence_constant: Constant name for play_sequence array
 
     Example:
         print_part_code(part1, 'part1', 'PART1_NOTES', 'PART1_SEQUENCE')
     """
-    # Print notes_to_highlight
+    # Print background_notes
     print(f"{notes_constant} = [")
 
     # Group notes by 4 per line for readability
-    notes = part.notes_to_highlight
+    notes = part.background_notes
     for i in range(0, len(notes), 4):
         chunk = notes[i:i+4]
         formatted_notes = ', '.join(f"{note}" for note in chunk)
@@ -372,7 +372,12 @@ def print_part_code(part: Part, part_name_variable: str = 'part1',
     # Print Part constructor
     print(f"{part_name_variable} = Part(")
     print(f'    name="{part.name}",')
-    print(f"    notes_to_highlight={notes_constant},")
+    print(f"    background_notes={notes_constant},")
+    if part.background_layers:
+        print("    background_layers=[")
+        for layer in part.background_layers:
+            print(f"        BackgroundLayer(notes={layer.notes!r}, color={layer.color!r}),")
+        print("    ],")
     print(f"    play_sequence={sequence_constant},")
     if part.description:
         print(f'    description="{part.description}"')
@@ -410,6 +415,8 @@ def print_lesson_code(parts: List[Part], lesson_name: str = "My Lesson",
     print()
     print("from models.lesson_model import Part, Lesson")
     print("from models.sequence_step import SequenceStep")
+    if any(part.background_layers for part in parts):
+        print("from models.background_layer import BackgroundLayer")
     print()
     print("# ============================================================================")
     print()

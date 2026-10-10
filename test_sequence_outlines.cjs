@@ -36,13 +36,17 @@ function setup() {
     };
     vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'sequence_outlines.js'), 'utf8'), context);
     return {
-        overlay, diagram, callbacks,
+        overlay, diagram, callbacks, markers, refresh: context.window.refreshSequenceOutlines,
         note(stringName, fret, x, y) {
             const index = ['e', 'B', 'G', 'D', 'A', 'E'].indexOf(stringName);
             const selector = fret === 0
                 ? `td.string-label[data-string="${index}"] .open-string-note`
                 : `td.fret[data-string="${index}"][data-fret="${fret}"] .note`;
-            markers.set(selector, {getBoundingClientRect: () => ({
+            const classes = new Set();
+            markers.set(selector, {classList: {
+                contains: name => classes.has(name),
+                add: name => classes.add(name), remove: name => classes.delete(name),
+            }, getBoundingClientRect: () => ({
                 left: 100 + x - 15, top: 50 + y - 15, width: 30, height: 30,
             })});
             return {stringName, fret};
@@ -55,6 +59,23 @@ function setup() {
 }
 
 const note = (x, y) => ({x, y, radius: 15});
+
+test('outlines containing hidden playback notes hide without changing geometry', () => {
+    const board = setup();
+    const triad = [board.note('e', 3, 100, 40), board.note('B', 3, 100, 75),
+        board.note('G', 4, 170, 110)];
+    board.draw([triad]);
+    const path = board.overlay.children[0].attrs.d;
+    const marker = [...board.markers.values()][0];
+    marker.classList.add('note-hidden');
+    board.refresh(); board.flush();
+    assert.equal(board.overlay.children[0].style.visibility, 'hidden');
+    assert.equal(board.overlay.children[0].attrs.d, path);
+    marker.classList.remove('note-hidden');
+    board.refresh(); board.flush();
+    assert.notEqual(board.overlay.children[0].style.visibility, 'hidden');
+    assert.equal(board.overlay.children[0].attrs.d, path);
+});
 
 // Sample the actual SVG path to verify convexity and note clearance, including arcs.
 function samplePath(d) {
